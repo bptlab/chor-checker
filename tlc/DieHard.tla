@@ -124,7 +124,7 @@ Spec == Init /\ [][Next]_<<big, small>>
 (* solved their problem when they reach a state with big = 4.  So, we      *)
 (* define NotSolved to be the predicate asserting that big # 4.            *)
 (***************************************************************************)
-NotSolved == big # 4
+NotSolved == big # 2
 
 (***************************************************************************)
 (* We find a solution by having TLC check if NotSolved is an invariant,    *)

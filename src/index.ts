@@ -1,7 +1,6 @@
 import express from 'express';
 import * as fs from 'fs';
 import * as path from 'path';
-//import * as child from 'child_process';
 let child = require('child_process');
 
 import {
@@ -11,27 +10,23 @@ import {
 import { Choreography, Gateway, FlowNode } from 'bpmn-moddle';
 
 // load XML
-// const order = fs.readFileSync(path.join(__dirname, '/../assets/order.bpmn'), 'utf-8');
-// const sample = fs.readFileSync(path.join(__dirname, '/../assets/sample.bpmn'), 'utf-8');
+const order = fs.readFileSync(path.join(__dirname, '/../assets/request.bpmn'), 'utf-8');
 
+// setup server
 const app = express();
-app.listen(3000, () => console.log('Example app listening on port 3000!'));
+app.listen(3000, () => console.log('Listening on port 3000!'));
 
+// entrypoint for model checking
 app.get('/', (req, res) => {
-  res.send('Hello World!');
-});
-
-//
-app.get('/tlc', (req, res) => {
+  let output : Buffer;
   try {
-    let foo: any = child.execSync('java -classpath tla2tools.jar tlc2.TLC -nowarning DieHard', { cwd: 'tlc' });
+    output = child.execSync('java -classpath tla2tools.jar tlc2.TLC -nowarning DieHard', { cwd: 'tlc' });
   }
   catch (error) {
-    console.log(error.stdout.toString());
-    console.log(error.stderr.toString());
+    output = Buffer.concat([error.stdout, error.stderr]);
   }
-  
-  res.send('Hello World!');
+  res.set('Content-Type', 'text/plain');
+  res.send(output);
 });
 
 // // route that returns all the gateways from `sample`
