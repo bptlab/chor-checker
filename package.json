@@ -29,6 +29,7 @@
     "@types/node": "^7.0.10",
     "bpmn-moddle": "^5.1.6",
     "esm": "^3.2.22",
-    "express": "^4.16.4"
+    "express": "^4.16.4",
+    "handlebars": "4.7.3"
   }
 }
