@@ -1,27 +1,9 @@
 ---------------- MODULE choreo ----------------
 
-EXTENDS TLC, Naturals, FiniteSets
+EXTENDS TLC, Naturals, Types
 
-(* types *)
-(* move to own file in the long run *)
-Task == "Task"
-GatewayExclusive == "GatewayExclusive"
-GatewayParallel == "GatewayParallel"
-GatewayEvent == "GatewayEvent"
-EventStart == "EventStart"
-EventEnd == "EventEnd"
+(* Oracles, data, bindings, ... *)
 
-FlowNormal == "FlowNormal"
-FlowConditional == "FlowConditional"
-FlowDefault == "FlowDefault"
-
-GatewayType == { GatewayExclusive, GatewayParallel, GatewayEvent }
-EventType == { EventStart, EventEnd }
-FlowType == { FlowNormal, FlowConditional, FlowDefault }
-
-NodeType == { Task } \union GatewayType \union EventType
-
-(* specification *)
 Nodes == {
   "X", "Y", "Z", "W",
   "E1", "E2",
@@ -49,7 +31,7 @@ target ==
 @@ "F7" :> "W"
 @@ "F8" :> "E2"
 
-nodeTypes ==
+nodeType ==
    "X" :> Task
 @@ "Y" :> Task
 @@ "Z" :> Task
@@ -58,13 +40,5 @@ nodeTypes ==
 @@ "E2" :> EventEnd
 @@ "G1" :> GatewayParallel
 @@ "G2" :> GatewayParallel
-
-(* runtime *)
-VARIABLES
-  marking
-
-var == <<marking>>
-
-TypeInvariant == marking \in [ Flows -> Nat ]
 
 ================================================================
