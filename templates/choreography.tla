@@ -1,8 +1,10 @@
----------------- MODULE choreo ----------------
+---------------- MODULE Choreography ----------------
 
 EXTENDS TLC, Naturals, Types
 
 (* Oracles, data, bindings, ... *)
+
+VARIABLES marking
 
 Nodes == {
   "X", "Y", "Z", "W",
@@ -40,5 +42,7 @@ nodeType ==
 @@ "E2" :> EventEnd
 @@ "G1" :> GatewayParallel
 @@ "G2" :> GatewayParallel
+
+INSTANCE Semantics
 
 ================================================================

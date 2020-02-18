@@ -16,3 +16,5 @@ EventType == { EventStart, EventEnd }
 FlowType == { FlowNormal, FlowConditional, FlowDefault }
 
 NodeType == { Task } \union GatewayType \union EventType
+
+================================================================

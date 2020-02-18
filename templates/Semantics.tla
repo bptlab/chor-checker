@@ -1,6 +1,6 @@
 ---------------- MODULE Semantics ----------------
 
-EXTENDS Naturals, PWSTypes, PWSDefs, FiniteSets
+EXTENDS Naturals, Types, Definitions, FiniteSets
 
 (* runtime *)
 VARIABLES
@@ -40,16 +40,16 @@ eventEnd(n) ==
                       ELSE marking[f] ]
 
 
-step(n) ==   
-  CASE nodeType[n] = GatewayParallel -> gatewayParallel(n)
-    [] nodeType[n] = Task -> task(n)
-    [] nodeType[n] = EventEnd -> eventEnd(n)
+step(n) == CASE nodeType[n] = GatewayParallel -> gatewayParallel(n)
+             [] nodeType[n] = Task -> task(n)
+             [] nodeType[n] = EventEnd -> eventEnd(n)
+             [] OTHER -> FALSE \* start events
 
-Next == \E n \in Node : step(n)
+Next == \E n \in Nodes : step(n)
 
 Init ==
-  /\ marking = [ n \in Node |->
-                     IF nodeType[n] = EventStart THEN 1
+  /\ marking = [ f \in Flows |->
+                     IF nodeType[source[f]] = EventStart THEN 1
                      ELSE 0 ]
 
 Spec == Init /\ [][Next]_var
@@ -61,4 +61,6 @@ Spec == Init /\ [][Next]_var
 \*  \A f \in Flows : <>(\E n \in ContainRel[p] :  marking[n] = 0)
 
 Safety ==
-  [](\A f \in Flows : edgemarks[e] <= 1)
+  [](\A f \in Flows : marking[f] <= 1)
+
+================================================================

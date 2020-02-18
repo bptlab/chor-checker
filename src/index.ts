@@ -20,7 +20,7 @@ app.listen(3000, () => console.log('Listening on port 3000!'));
 app.get('/', (req, res) => {
   let output : Buffer;
   try {
-    output = child.execSync('java -classpath tla2tools.jar tlc2.TLC -nowarning DieHard', { cwd: 'tlc' });
+    output = child.execSync('java -classpath tla2tools.jar tlc2.TLC -deadlock -nowarning Choreography', { cwd: 'templates' });
   }
   catch (error) {
     output = Buffer.concat([error.stdout, error.stderr]);
