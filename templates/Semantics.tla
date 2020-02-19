@@ -27,9 +27,9 @@ task(n) ==
                          ELSE IF ff \in outgoing(n) THEN TRUE
                          ELSE marking[ff] ] IN
       /\ (\A ff \in outgoing(n) : propagateTokens(newMarking, ff))
-      /\ PrintT(<<f,newMarking>>)
+      /\ PrintT(<<"new marking",f,newMarking>>)
       /\ marking' = [ ff \in DOMAIN marking |-> newMarking[ff] ]
-      /\ PrintT(<<f,marking'>>)
+      /\ PrintT(<<"new marking applied",f,marking'>>)
 
 (*
 Call on outgoing sequence flow of the task.
@@ -42,16 +42,17 @@ Then, depending on target, do something.
 - end event: consume, stop
 - intermediate event: stop
 *)
-propagateTokens(newMarking, f) == LET n == target[f] IN PrintT(<<n, newMarking>>) /\ 
+propagateTokens(newMarking, f) == LET n == target[f] IN PrintT(<<"starting for",n, newMarking>>) /\ 
   CASE  nodeType[n] = GatewayParallel ->
-          /\ PrintT(<<"blub2", n, newMarking>>)
-          /\ (\A fi \in incoming(n) : PrintT(<<"check", fi>>) /\ newMarking[fi]) =>
-            /\ PrintT(<<"blub", n, newMarking>>)
+          /\ PrintT(<<"parallel gateway", n, newMarking>>)
+          /\ (\A fi \in incoming(n) : PrintT(<<"check", fi, newMarking[fi]>>) /\ newMarking[fi]) =>
+            /\ PrintT(<<"parallel gateway enabled", n, newMarking>>)
             /\ newMarking = [ ff \in DOMAIN marking |->
                             IF ff \in incoming(n) THEN FALSE
                             ELSE IF ff \in outgoing(n) THEN TRUE
                             ELSE newMarking[ff] ]
             /\ \A fo \in outgoing(n) : propagateTokens(newMarking, fo)
+            /\ PrintT(<<"parallel gateway after", n, newMarking>>)
     []  nodeType[n] = EventEnd ->
           newMarking = [ ff \in DOMAIN marking |->
                        IF ff = f THEN FALSE ELSE newMarking[ff] ]
