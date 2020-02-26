@@ -4,7 +4,7 @@ EXTENDS TLC, Naturals, Types
 
 (* Oracles, data, bindings, ... *)
 
-VARIABLES marking
+VARIABLES marking, awaitTransaction
 
 Nodes == {
   "X", "Y", "Z", "W",
