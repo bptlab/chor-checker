@@ -2,7 +2,7 @@
 
 EXTENDS Types
 
-CONSTANT Nodes, Flows, source, target, nodeType
+CONSTANT Nodes, Flows, Oracles, Tasks, source, target, nodeType
 
 incoming(n) == { f \in Flows : target[f] = n }
 outgoing(n) == { f \in Flows : source[f] = n }

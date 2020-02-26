@@ -4,7 +4,7 @@ EXTENDS TLC, Naturals, Types
 
 (* Oracles, data, bindings, ... *)
 
-VARIABLES marking, awaitTransaction
+VARIABLES marking, awaitTransaction, aging, timestamp, oracleValues, messageValues
 
 Nodes == {
   "X", "Y", "Z", "W",
@@ -12,6 +12,9 @@ Nodes == {
   "G1", "G2"
 }
 Flows == { "F1", "F2", "F3", "F4", "F5", "F6", "F7", "F8" }
+Oracles == {
+  "EURUSD"
+}
 
 source ==
    "F1" :> "E1"
@@ -42,6 +45,8 @@ nodeType ==
 @@ "E2" :> EventEnd
 @@ "G1" :> GatewayParallel
 @@ "G2" :> GatewayParallel
+
+Tasks == { n \in Nodes : nodeType[n] = Task }
 
 INSTANCE Semantics
 
