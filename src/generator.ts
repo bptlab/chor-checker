@@ -64,7 +64,7 @@ export async function translate(xml: string = order): Promise<string> {
     target.set(flowIDs.get(sequenceFlow), nodeIDs.get(sequenceFlow.targetRef));
   });
   
-  // build default flow relation
+  // build default flow relation and node types
   nodes.forEach((flowNode, index) => {
     if (is('bpmn:ExclusiveGateway')(flowNode)) {
       let exclusiveGateway = <ExclusiveGateway> flowNode;
@@ -72,6 +72,20 @@ export async function translate(xml: string = order): Promise<string> {
         defaultFlow.set(nodeIDs.get(exclusiveGateway), flowIDs.get(exclusiveGateway.default));
       }
     }
+
+    let type = '';
+    if (is('bpmn:ChoreographyTask')(flowNode)) {
+      type = 'Task';
+    } else if (is('bpmn:ParallelGateway')(flowNode)) {
+      type = 'GatewayParallel';
+    } else if (is('bpmn:ExclusiveGateway')(flowNode)) {
+      type = 'GatewayExclusive';
+    } else if (is('bpmn:StartEvent')(flowNode)) {
+      type = 'EventStart';
+    } else if (is('bpmn:EndEvent')(flowNode)) {
+      type = 'EventEnd';
+    }
+    nodeType.set(nodeIDs.get(flowNode), type);
   });
 
   // put all that stuff into the template
@@ -89,5 +103,6 @@ export async function translate(xml: string = order): Promise<string> {
 /**
  * - NO ORACLES YET
  * - NO CONDITIONS YET
+ * - NO INTERMEDIATE EVENTS YET
  * - NEED TO FIND EXPRESSION LANGUAGE FOR SYMBOLIC ABSTRACTION
  */

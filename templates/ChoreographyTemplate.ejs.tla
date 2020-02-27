@@ -1,3 +1,16 @@
+<%
+
+function outputMap(map) {
+  if (map.size == 0) {
+    return '[ i \in {} |-> {}]';
+  } else {
+    return Array.from(map.entries())
+     .map(entry => entry.map(e => "\"" + e + "\"").join(' :> '))
+     .join(' @@ ');
+  }
+}
+
+%>
 ---------------- MODULE Choreography ----------------
 
 EXTENDS TLC, Naturals, Types
@@ -12,37 +25,20 @@ Flows == {
 }
 
 source ==
-  <%-
-    Array.from(source.entries())
-     .map(entry => entry.map(e => "\"" + e + "\"").join(' :> '))
-     .join(' @@ ')
-  %>
+  <%- outputMap(source) %>
 
 target ==
-  <%-
-    Array.from(target.entries())
-     .map(entry => entry.map(e => "\"" + e + "\"").join(' :> '))
-     .join(' @@ ')
-  %>
+  <%- outputMap(target) %>
 
 nodeType ==
-   "X" :> Task
-@@ "Y" :> Task
-@@ "Z" :> Task
-@@ "W" :> Task
-@@ "E1" :> EventStart
-@@ "E2" :> EventEnd
-@@ "EC" :> EventConditional
-@@ "ET" :> EventTimer
-@@ "G1" :> GatewayExclusive
-@@ "G2" :> GatewayExclusive
-
-defaultFlow ==
-  <%-
-    Array.from(defaultFlow.entries())
-     .map(entry => entry.map(e => "\"" + e + "\"").join(' :> '))
+  <%- nodeType.size == 0 ? '[ i \in {} |-> {}]' :
+    Array.from(nodeType.entries())
+     .map(entry => entry.map((e,i) => i == 0 ? "\"" + e + "\"" : e).join(' :> '))
      .join(' @@ ')
   %>
+
+defaultFlow ==
+  <%- outputMap(defaultFlow) %>
 
 Oracles == {
   "EURUSD",
@@ -56,6 +52,17 @@ AllOracleDomains == UNION { OracleDomain[o] : o \in DOMAIN OracleDomain }
 MessageDomain == { 100 }
 
 PayloadDomain == { NoPayload } \union MessageDomain \union AllOracleDomains
+
+(* For these conditions, we can not use the variables directly. We have
+   to get them as parameters. TODO Think of a better naming. *)
+evaluateIntermediateEvent(n, f, ma, ti, or, me) ==
+  CASE n = "ET" -> ti - ma[f][2] = 2
+    [] n = "EC" -> or["WEATHER"] = 9
+    [] OTHER -> FALSE
+
+evaluateFlow(f, or, me) == FALSE
+  (*CASE f = "F4" -> or["WEATHER"] = 8
+    [] OTHER -> FALSE*)
 
 INSTANCE Semantics
 
