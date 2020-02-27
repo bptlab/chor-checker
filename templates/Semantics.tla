@@ -26,7 +26,7 @@ TypeInvariant ==
   /\ \A o \in Oracles : oracleValues[o] \in OracleDomain[o]
   /\ messageValues \in [ Tasks -> Nat ]
   /\ timestamp \in Nat
-  /\ curTx \in TxType \X Nat \* add payload, could be different for task/oracle tx *\
+  /\ curTx \in TxType \X Nat \X PayloadDomain \* restrict payloads to allowed ones for each oracle/choreo call *\
 
 (* transaction processing *)
 gatewayParallel(n) ==
@@ -56,7 +56,7 @@ propagateFlow ==
 (* end transactions *)
 endTx ==
   /\ UNCHANGED <<marking, aging, oracleValues, messageValues>>
-  /\ curTx' = <<NoTx, timestamp>>
+  /\ curTx' = <<NoTx, timestamp, NoPayload>>
 
 (* start transactions *)
 startChoreoTx ==
@@ -70,14 +70,16 @@ startChoreoTx ==
       /\ aging' = [ f \in DOMAIN aging |->
                           IF f = fi \/ f \in outgoing(t) THEN timestamp
                           ELSE aging[f] ]
-      /\ curTx' = <<ChoreoTx, timestamp>>
-      /\ UNCHANGED <<oracleValues, messageValues, timestamp>>
+      /\ \E mv \in MessageDomain :
+        /\ curTx' = <<ChoreoTx, timestamp, mv>>
+        /\ messageValues' = [ messageValues EXCEPT ![t] = mv ]
+      /\ UNCHANGED <<oracleValues, timestamp>>
 
 startOracleTx ==
   \E o \in Oracles : \E v \in OracleDomain[o] :
     /\ oracleValues' = [ oracleValues EXCEPT ![o] = v ]
-    /\ curTx' = <<OracleTx, timestamp>>
-    /\ UNCHANGED <<marking, aging, oracleValues, messageValues, timestamp>>
+    /\ curTx' = <<OracleTx, timestamp, v>>
+  /\ UNCHANGED <<marking, aging, oracleValues, messageValues, timestamp>>
 
 (* timestep processing *)
 timestep ==
@@ -103,7 +105,7 @@ Init ==
   /\ oracleValues \in { ov \in [ Oracles -> AllOracleDomains ] : \A o \in Oracles : ov[o] \in OracleDomain[o] }
   /\ messageValues = [ n \in Tasks |-> 0 ]
   /\ timestamp = 0
-  /\ curTx = <<NoTx, 0>>
+  /\ curTx = <<NoTx, 0, NoPayload>>
 
 Spec == Init /\ [][Next]_var
 

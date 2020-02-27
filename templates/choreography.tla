@@ -52,6 +52,11 @@ Oracles == {
 OracleDomain ==
    "EURUSD" :> { 1, 2, 3 }
 @@ "WEATHER" :> { 8, 9, 10 }
+AllOracleDomains == UNION { OracleDomain[o] : o \in DOMAIN OracleDomain }
+
+MessageDomain == { 100 }
+
+PayloadDomain == { NoPayload } \union MessageDomain \union AllOracleDomains
 
 INSTANCE Semantics
 

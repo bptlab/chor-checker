@@ -25,4 +25,6 @@ OracleTx == "OracleTx"
 
 TxType == { NoTx, ChoreoTx, OracleTx }
 
+NoPayload == 0
+
 ================================================================
