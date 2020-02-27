@@ -11,9 +11,8 @@ Nodes == {
   "E1", "E2",
   "G1", "G2"
 }
-Flows == { "F1", "F2", "F3", "F4", "F5", "F6", "F7", "F8" }
-Oracles == {
-  "EURUSD"
+Flows == {
+  "F1", "F2", "F3", "F4", "F5", "F6", "F7", "F8"
 }
 
 source ==
@@ -46,7 +45,13 @@ nodeType ==
 @@ "G1" :> GatewayParallel
 @@ "G2" :> GatewayParallel
 
-Tasks == { n \in Nodes : nodeType[n] = Task }
+Oracles == {
+  "EURUSD",
+  "WEATHER"
+}
+OracleDomain ==
+   "EURUSD" :> { 1, 2, 3 }
+@@ "WEATHER" :> { 8, 9, 10 }
 
 INSTANCE Semantics
 

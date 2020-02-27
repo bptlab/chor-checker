@@ -22,7 +22,8 @@ var == <<marking, aging, oracleValues, messageValues, timestamp, curTx>>
 TypeInvariant ==
   /\ marking \in [ Flows -> BOOLEAN ]
   /\ aging \in [ Flows -> Nat ]
-  /\ oracleValues \in [ Oracles -> Nat ]
+  /\ oracleValues \in [ Oracles -> AllOracleDomains ]
+  /\ \A o \in Oracles : oracleValues[o] \in OracleDomain[o]
   /\ messageValues \in [ Tasks -> Nat ]
   /\ timestamp \in Nat
   /\ curTx \in TxType \X Nat \* add payload, could be different for task/oracle tx *\
@@ -69,12 +70,14 @@ startChoreoTx ==
       /\ aging' = [ f \in DOMAIN aging |->
                           IF f = fi \/ f \in outgoing(t) THEN timestamp
                           ELSE aging[f] ]
-      /\ UNCHANGED oracleValues
-      /\ UNCHANGED messageValues
-      /\ UNCHANGED timestamp
       /\ curTx' = <<ChoreoTx, timestamp>>
+      /\ UNCHANGED <<oracleValues, messageValues, timestamp>>
 
-startOracleTx == FALSE /\ UNCHANGED timestamp \* TODO *\
+startOracleTx ==
+  \E o \in Oracles : \E v \in OracleDomain[o] :
+    /\ oracleValues' = [ oracleValues EXCEPT ![o] = v ]
+    /\ curTx' = <<OracleTx, timestamp>>
+    /\ UNCHANGED <<marking, aging, oracleValues, messageValues, timestamp>>
 
 (* timestep processing *)
 timestep ==
@@ -97,7 +100,7 @@ Init ==
                      IF nodeType[source[f]] = EventStart THEN TRUE
                      ELSE FALSE ]
   /\ aging = [ f \in Flows |-> 0 ]
-  /\ oracleValues = [ o \in Oracles |-> 0 ]
+  /\ oracleValues \in { ov \in [ Oracles -> AllOracleDomains ] : \A o \in Oracles : ov[o] \in OracleDomain[o] }
   /\ messageValues = [ n \in Tasks |-> 0 ]
   /\ timestamp = 0
   /\ curTx = <<NoTx, 0>>
