@@ -1,5 +1,6 @@
 ---------------- MODULE Types ----------------
 
+(* choreography types *)
 Task == "Task"
 GatewayExclusive == "GatewayExclusive"
 GatewayParallel == "GatewayParallel"
@@ -16,5 +17,12 @@ EventType == { EventStart, EventEnd }
 FlowType == { FlowNormal, FlowConditional, FlowDefault }
 
 NodeType == { Task } \union GatewayType \union EventType
+
+(* transaction types *)
+NoTx == "NoTx"
+ChoreoTx == "ChoreoTx"
+OracleTx == "OracleTx"
+
+TxType == { NoTx, ChoreoTx, OracleTx }
 
 ================================================================

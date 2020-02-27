@@ -4,7 +4,7 @@ EXTENDS TLC, Naturals, Types
 
 (* Oracles, data, bindings, ... *)
 
-VARIABLES marking, awaitTransaction, aging, timestamp, oracleValues, messageValues
+VARIABLES marking, aging, timestamp, oracleValues, messageValues, curTx
 
 Nodes == {
   "X", "Y", "Z", "W",
