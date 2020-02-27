@@ -2,8 +2,6 @@
 
 EXTENDS TLC, Naturals, Types
 
-(* Oracles, data, bindings, ... *)
-
 VARIABLES marking, timestamp, oracleValues, messageValues, curTx
 
 Nodes == {
@@ -67,6 +65,16 @@ AllOracleDomains == UNION { OracleDomain[o] : o \in DOMAIN OracleDomain }
 MessageDomain == { 100 }
 
 PayloadDomain == { NoPayload } \union MessageDomain \union AllOracleDomains
+
+(* For these conditions, we can not use the variables directly. We have
+   to get them as parameters. TODO Think of a better naming. *)
+evaluateIntermediateEvent(n, f, ma, ti, or, me) ==
+  \/ n = "ET" => ti - ma[f][2] = 2
+  \/ n = "EC" => or["WEATHER"] = 9
+
+evaluateFlow(f, or, me) ==
+  CASE f = "F4" -> or["WEATHER"] = 8
+    [] OTHER -> FALSE
 
 INSTANCE Semantics
 

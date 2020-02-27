@@ -2,9 +2,9 @@
 
 EXTENDS Types
 
-CONSTANT
+CONSTANTS
     Nodes, Flows, Oracles, OracleDomain, AllOracleDomains, PayloadDomain, MessageDomain,
-    source, target, nodeType, defaultFlow
+    source, target, nodeType, defaultFlow, evaluateIntermediateEvent(_,_,_,_,_,_), evaluateFlow(_,_,_)
 
 incoming(n) == { f \in Flows : target[f] = n }
 outgoing(n) == { f \in Flows : source[f] = n }

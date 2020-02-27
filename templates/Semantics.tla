@@ -1,6 +1,6 @@
 ---------------- MODULE Semantics ----------------
 
-EXTENDS TLC, Types, Definitions, FiniteSets, Naturals
+EXTENDS TLC, FiniteSets, Naturals, Types, Definitions
 
 (*
 Problems:
@@ -21,29 +21,11 @@ VARIABLES marking, oracleValues, messageValues, timestamp, curTx
 
 var == <<marking, oracleValues, messageValues, timestamp, curTx>>
 
-(* move this to choreography.tla somehow so we only have to generate one file *)
-evaluateIntermediateEvent(n, f) ==
-  CASE n = "ET" -> timestamp - marking[f][2] = 2
-    [] n = "EC" -> oracleValues["WEATHER"] = 9
-    [] OTHER -> FALSE
-
-evaluateFlow(f) ==
-  CASE f = "F4" -> oracleValues["WEATHER"] = 8
-    [] OTHER -> FALSE
-
-TypeInvariant ==
-  /\ marking \in [ Flows -> BOOLEAN \X Nat ]
-  /\ oracleValues \in [ Oracles -> AllOracleDomains ]
-  /\ \A o \in Oracles : oracleValues[o] \in OracleDomain[o]
-  /\ messageValues \in [ Tasks -> Nat ]
-  /\ timestamp \in Nat
-  /\ curTx \in TxType \X Nat \X PayloadDomain \* restrict payloads to allowed ones for each oracle/choreo call *\
-
 (* transaction processing *)
 eventIntermediate(n) ==
   /\ \E f \in incoming(n) :
     /\ marking[f][1]
-    /\ evaluateIntermediateEvent(n, f)
+    /\ evaluateIntermediateEvent(n, f, marking, timestamp, oracleValues, messageValues)
     /\ marking' = [ ff \in DOMAIN marking |->
                         IF ff = f THEN <<FALSE, timestamp>>
                         ELSE IF ff \in outgoing(n) THEN <<TRUE, timestamp>>
@@ -59,7 +41,7 @@ gatewayParallel(n) ==
 gatewayExclusive(n) ==
   /\ \E f \in incoming(n) :
     /\ marking[f][1]
-    /\ LET enabled == { fo \in outgoing(n) : evaluateFlow(fo) } IN
+    /\ LET enabled == { fo \in outgoing(n) : evaluateFlow(fo, oracleValues, messageValues) } IN
       IF Cardinality(enabled) > 0 THEN
         /\ \E ff \in enabled : 
           /\ marking' = [ marking EXCEPT ![f] = <<FALSE, timestamp>>, ![ff] = <<TRUE, timestamp>> ]
@@ -132,6 +114,14 @@ Init ==
   /\ curTx = <<NoTx, 0, NoPayload>>
 
 Spec == Init /\ [][Next]_var
+
+TypeInvariant ==
+  /\ marking \in [ Flows -> BOOLEAN \X Nat ]
+  /\ oracleValues \in [ Oracles -> AllOracleDomains ]
+  /\ \A o \in Oracles : oracleValues[o] \in OracleDomain[o]
+  /\ messageValues \in [ Tasks -> Nat ]
+  /\ timestamp \in Nat
+  /\ curTx \in TxType \X Nat \X PayloadDomain \* restrict payloads to allowed ones for each oracle/choreo call *\
 
 (* properties *)
 Safety ==
