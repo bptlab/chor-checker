@@ -15,13 +15,12 @@ Idea:
 *)
 
 (* configuration *)
-VARIABLES marking, aging, oracleValues, messageValues, timestamp, curTx
+VARIABLES marking, oracleValues, messageValues, timestamp, curTx
 
-var == <<marking, aging, oracleValues, messageValues, timestamp, curTx>>
+var == <<marking, oracleValues, messageValues, timestamp, curTx>>
 
 TypeInvariant ==
-  /\ marking \in [ Flows -> BOOLEAN ]
-  /\ aging \in [ Flows -> Nat ]
+  /\ marking \in [ Flows -> BOOLEAN \X Nat ]
   /\ oracleValues \in [ Oracles -> AllOracleDomains ]
   /\ \A o \in Oracles : oracleValues[o] \in OracleDomain[o]
   /\ messageValues \in [ Tasks -> Nat ]
@@ -30,20 +29,16 @@ TypeInvariant ==
 
 (* transaction processing *)
 gatewayParallel(n) ==
-  /\ \A f \in incoming(n) : marking[f]
+  /\ \A f \in incoming(n) : marking[f][1]
   /\ marking' = [ f \in DOMAIN marking |->
-                      IF f \in incoming(n) THEN FALSE
-                      ELSE IF f \in outgoing(n) THEN TRUE
+                      IF f \in incoming(n) THEN <<FALSE, timestamp>>
+                      ELSE IF f \in outgoing(n) THEN <<TRUE, timestamp>>
                       ELSE marking[f] ]
-  /\ aging' = [ f \in DOMAIN aging |->
-                      IF f \in incoming(n) \/ f \in outgoing(n) THEN timestamp'
-                      ELSE aging[f] ]
 
 eventEnd(n) ==
   /\ \E f \in incoming(n) :
-    /\ marking[f]
-    /\ marking' = [ marking EXCEPT ![f] = FALSE ]
-    /\ aging' = [ aging EXCEPT ![f] = timestamp' ]
+    /\ marking[f][1]
+    /\ marking' = [ marking EXCEPT ![f] = <<FALSE, timestamp>> ]
 
 (* propagate flow *)
 propagateFlow ==
@@ -55,21 +50,18 @@ propagateFlow ==
 
 (* end transactions *)
 endTx ==
-  /\ UNCHANGED <<marking, aging, oracleValues, messageValues>>
+  /\ UNCHANGED <<marking, oracleValues, messageValues>>
   /\ curTx' = <<NoTx, timestamp, NoPayload>>
 
 (* start transactions *)
 startChoreoTx ==
   \E t \in Tasks :
     \E fi \in incoming(t) :
-      /\ marking[fi]
+      /\ marking[fi][1]
       /\ marking' = [ f \in DOMAIN marking |->
-                          IF f = fi THEN FALSE
-                          ELSE IF f \in outgoing(t) THEN TRUE
+                          IF f = fi THEN <<FALSE, timestamp>>
+                          ELSE IF f \in outgoing(t) THEN <<TRUE, timestamp>>
                           ELSE marking[f] ]
-      /\ aging' = [ f \in DOMAIN aging |->
-                          IF f = fi \/ f \in outgoing(t) THEN timestamp
-                          ELSE aging[f] ]
       /\ \E mv \in MessageDomain :
         /\ curTx' = <<ChoreoTx, timestamp, mv>>
         /\ messageValues' = [ messageValues EXCEPT ![t] = mv ]
@@ -79,11 +71,11 @@ startOracleTx ==
   \E o \in Oracles : \E v \in OracleDomain[o] :
     /\ oracleValues' = [ oracleValues EXCEPT ![o] = v ]
     /\ curTx' = <<OracleTx, timestamp, v>>
-  /\ UNCHANGED <<marking, aging, oracleValues, messageValues, timestamp>>
+  /\ UNCHANGED <<marking, oracleValues, messageValues, timestamp>>
 
 (* timestep processing *)
 timestep ==
-  /\ UNCHANGED <<marking, aging, oracleValues, messageValues, curTx>>
+  /\ UNCHANGED <<marking, oracleValues, messageValues, curTx>>
   /\ timestamp' = timestamp + 1
 
 (* transition system *)
@@ -99,9 +91,8 @@ Next ==
 
 Init ==
   /\ marking = [ f \in Flows |->
-                     IF nodeType[source[f]] = EventStart THEN TRUE
-                     ELSE FALSE ]
-  /\ aging = [ f \in Flows |-> 0 ]
+                     IF nodeType[source[f]] = EventStart THEN <<TRUE, 0>>
+                     ELSE <<FALSE, 0>> ]
   /\ oracleValues \in { ov \in [ Oracles -> AllOracleDomains ] : \A o \in Oracles : ov[o] \in OracleDomain[o] }
   /\ messageValues = [ n \in Tasks |-> 0 ]
   /\ timestamp = 0
@@ -111,6 +102,6 @@ Spec == Init /\ [][Next]_var
 
 (* properties *)
 Safety ==
-  [](\E f \in Flows : marking[f])
+  [](\E f \in Flows : marking[f][1])
 
 ================================================================
