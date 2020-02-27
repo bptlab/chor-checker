@@ -1,6 +1,6 @@
 {
-  "watch": ["src"],
-  "ext": "ts",
+  "watch": ["src", "templates"],
+  "ext": "ts,tla,cfg",
   "ignore": ["src/**/*.spec.ts"],
   "exec": "npm run build && npm run serve"
 }
