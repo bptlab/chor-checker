@@ -4,7 +4,7 @@ EXTENDS Types
 
 CONSTANT
     Nodes, Flows, Oracles, OracleDomain, AllOracleDomains, PayloadDomain, MessageDomain,
-    source, target, nodeType
+    source, target, nodeType, defaultFlow
 
 incoming(n) == { f \in Flows : target[f] = n }
 outgoing(n) == { f \in Flows : source[f] = n }

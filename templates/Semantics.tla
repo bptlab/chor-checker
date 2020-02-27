@@ -27,6 +27,10 @@ evaluateIntermediateEvent(n, f) ==
     [] n = "EC" -> oracleValues["WEATHER"] = 9
     [] OTHER -> FALSE
 
+evaluateFlow(f) ==
+  CASE f = "F4" -> oracleValues["WEATHER"] = 8
+    [] OTHER -> FALSE
+
 TypeInvariant ==
   /\ marking \in [ Flows -> BOOLEAN \X Nat ]
   /\ oracleValues \in [ Oracles -> AllOracleDomains ]
@@ -52,6 +56,16 @@ gatewayParallel(n) ==
                       ELSE IF f \in outgoing(n) THEN <<TRUE, timestamp>>
                       ELSE marking[f] ]
 
+gatewayExclusive(n) ==
+  /\ \E f \in incoming(n) :
+    /\ marking[f][1]
+    /\ LET enabled == { fo \in outgoing(n) : evaluateFlow(fo) } IN
+      IF Cardinality(enabled) > 0 THEN
+        /\ \E ff \in enabled : 
+          /\ marking' = [ marking EXCEPT ![f] = <<FALSE, timestamp>>, ![ff] = <<TRUE, timestamp>> ]
+      ELSE
+        /\ marking' = [ marking EXCEPT ![f] = <<FALSE, timestamp>>, ![defaultFlow[n]] = <<TRUE, timestamp>> ]
+
 eventEnd(n) ==
   /\ \E f \in incoming(n) :
     /\ marking[f][1]
@@ -62,6 +76,7 @@ propagateFlow ==
   /\ UNCHANGED <<oracleValues, messageValues, curTx>>
   /\ \E n \in Nodes \ Tasks :
        CASE nodeType[n] = GatewayParallel -> gatewayParallel(n)
+         [] nodeType[n] = GatewayExclusive -> gatewayExclusive(n)
          [] nodeType[n] = EventEnd -> eventEnd(n)
          [] nodeType[n] \in EventIntermediateType -> eventIntermediate(n)
          [] OTHER -> FALSE

@@ -48,8 +48,12 @@ nodeType ==
 @@ "E2" :> EventEnd
 @@ "EC" :> EventConditional
 @@ "ET" :> EventTimer
-@@ "G1" :> GatewayParallel
-@@ "G2" :> GatewayParallel
+@@ "G1" :> GatewayExclusive
+@@ "G2" :> GatewayExclusive
+
+defaultFlow ==
+   "G1" :> "F3"
+@@ "G2" :> "F7"
 
 Oracles == {
   "EURUSD",
