@@ -4,20 +4,30 @@ EXTENDS TLC, Types, Definitions, FiniteSets, Naturals
 
 (*
 Problems:
-  - there could be an oracle transaction in the same block, so we have to block JUST choreography transactions from happening in the same block
   - we have to do symbolic abstraction somehow for conditions, otherwise the state-space becomes too big
-  - maybe also scaling, i.e., when blocktime is 5 seconds but an event calls for a month
+  - maybe time scaling, i.e., when blocktime is 5 seconds but an event calls for a month
 
 Idea:
   - create separate start/end transaction states
   - a transaction is locked until there is no more work to do inside it
   - that way we do not have to cram everything into a single transition
+
+Optimization:
+  - allow oracles to change only once per timestep
 *)
 
 (* configuration *)
 VARIABLES marking, oracleValues, messageValues, timestamp, curTx
 
 var == <<marking, oracleValues, messageValues, timestamp, curTx>>
+
+evaluateTimer(n, f) ==
+  CASE n = "ET" -> timestamp - marking[f][2] = 2
+    [] OTHER -> FALSE
+
+evaluateCondition(n, f) ==
+  CASE n = "EC" -> oracleValues["WEATHER"] = 9
+    [] OTHER -> FALSE
 
 TypeInvariant ==
   /\ marking \in [ Flows -> BOOLEAN \X Nat ]
@@ -28,6 +38,24 @@ TypeInvariant ==
   /\ curTx \in TxType \X Nat \X PayloadDomain \* restrict payloads to allowed ones for each oracle/choreo call *\
 
 (* transaction processing *)
+eventTimer(n) ==
+  /\ \E f \in incoming(n) :
+    /\ marking[f][1]
+    /\ evaluateTimer(n, f)
+    /\ marking' = [ ff \in DOMAIN marking |->
+                        IF ff = f THEN <<FALSE, timestamp>>
+                        ELSE IF ff \in outgoing(n) THEN <<TRUE, timestamp>>
+                        ELSE marking[ff] ]
+
+eventConditional(n) ==
+  /\ \E f \in incoming(n) :
+    /\ marking[f][1]
+    /\ evaluateCondition(n, f)
+    /\ marking' = [ ff \in DOMAIN marking |->
+                        IF ff = f THEN <<FALSE, timestamp>>
+                        ELSE IF ff \in outgoing(n) THEN <<TRUE, timestamp>>
+                        ELSE marking[ff] ]
+
 gatewayParallel(n) ==
   /\ \A f \in incoming(n) : marking[f][1]
   /\ marking' = [ f \in DOMAIN marking |->
@@ -46,6 +74,8 @@ propagateFlow ==
   /\ \E n \in Nodes \ Tasks :
        CASE nodeType[n] = GatewayParallel -> gatewayParallel(n)
          [] nodeType[n] = EventEnd -> eventEnd(n)
+         [] nodeType[n] = EventConditional -> eventConditional(n)
+         [] nodeType[n] = EventTimer -> eventTimer(n)
          [] OTHER -> FALSE
 
 (* end transactions *)

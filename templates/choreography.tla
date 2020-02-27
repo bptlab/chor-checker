@@ -8,17 +8,19 @@ VARIABLES marking, timestamp, oracleValues, messageValues, curTx
 
 Nodes == {
   "X", "Y", "Z", "W",
-  "E1", "E2",
+  "E1", "E2", "EC", "ET",
   "G1", "G2"
 }
 Flows == {
-  "F1", "F2", "F3", "F4", "F5", "F6", "F7", "F8"
+  "F1", "F2", "F3", "F3.2", "F3.3", "F4", "F5", "F6", "F7", "F8"
 }
 
 source ==
    "F1" :> "E1"
 @@ "F2" :> "X"
 @@ "F3" :> "G1"
+@@ "F3.2" :> "EC"
+@@ "F3.3" :> "ET"
 @@ "F4" :> "G1"
 @@ "F5" :> "Y"
 @@ "F6" :> "Z"
@@ -28,7 +30,9 @@ source ==
 target ==
    "F1" :> "X"
 @@ "F2" :> "G1"
-@@ "F3" :> "Y"
+@@ "F3" :> "EC"
+@@ "F3.2" :> "ET"
+@@ "F3.3" :> "Y"
 @@ "F4" :> "Z"
 @@ "F5" :> "G2"
 @@ "F6" :> "G2"
@@ -42,6 +46,8 @@ nodeType ==
 @@ "W" :> Task
 @@ "E1" :> EventStart
 @@ "E2" :> EventEnd
+@@ "EC" :> EventConditional
+@@ "ET" :> EventTimer
 @@ "G1" :> GatewayParallel
 @@ "G2" :> GatewayParallel
 
