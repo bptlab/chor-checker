@@ -21,12 +21,10 @@ VARIABLES marking, oracleValues, messageValues, timestamp, curTx
 
 var == <<marking, oracleValues, messageValues, timestamp, curTx>>
 
-evaluateTimer(n, f) ==
+(* move this to choreography.tla somehow so we only have to generate one file *)
+evaluateIntermediateEvent(n, f) ==
   CASE n = "ET" -> timestamp - marking[f][2] = 2
-    [] OTHER -> FALSE
-
-evaluateCondition(n, f) ==
-  CASE n = "EC" -> oracleValues["WEATHER"] = 9
+    [] n = "EC" -> oracleValues["WEATHER"] = 9
     [] OTHER -> FALSE
 
 TypeInvariant ==
@@ -38,19 +36,10 @@ TypeInvariant ==
   /\ curTx \in TxType \X Nat \X PayloadDomain \* restrict payloads to allowed ones for each oracle/choreo call *\
 
 (* transaction processing *)
-eventTimer(n) ==
+eventIntermediate(n) ==
   /\ \E f \in incoming(n) :
     /\ marking[f][1]
-    /\ evaluateTimer(n, f)
-    /\ marking' = [ ff \in DOMAIN marking |->
-                        IF ff = f THEN <<FALSE, timestamp>>
-                        ELSE IF ff \in outgoing(n) THEN <<TRUE, timestamp>>
-                        ELSE marking[ff] ]
-
-eventConditional(n) ==
-  /\ \E f \in incoming(n) :
-    /\ marking[f][1]
-    /\ evaluateCondition(n, f)
+    /\ evaluateIntermediateEvent(n, f)
     /\ marking' = [ ff \in DOMAIN marking |->
                         IF ff = f THEN <<FALSE, timestamp>>
                         ELSE IF ff \in outgoing(n) THEN <<TRUE, timestamp>>
@@ -74,8 +63,7 @@ propagateFlow ==
   /\ \E n \in Nodes \ Tasks :
        CASE nodeType[n] = GatewayParallel -> gatewayParallel(n)
          [] nodeType[n] = EventEnd -> eventEnd(n)
-         [] nodeType[n] = EventConditional -> eventConditional(n)
-         [] nodeType[n] = EventTimer -> eventTimer(n)
+         [] nodeType[n] \in EventIntermediateType -> eventIntermediate(n)
          [] OTHER -> FALSE
 
 (* end transactions *)
