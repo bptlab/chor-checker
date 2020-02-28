@@ -3,15 +3,9 @@ import fs from 'fs-extra';
 let child = require('child_process');
 
 const EXECUTION_FOLDER = './execution';
-const KEEP_ARTIFACTS = false;
+const KEEP_ARTIFACTS = true;
 
 export async function checkModel(xml: string, term: string): Promise<string> {
-  /**
-   * - generate TLA, write file
-   * - run model checking
-   * - delete temporary folder
-   */
-
    //TODO generate better ID
   const id = new Date().getTime();
   const folder = EXECUTION_FOLDER + '/' + id;
@@ -19,7 +13,7 @@ export async function checkModel(xml: string, term: string): Promise<string> {
   
   return fs.ensureDir(folder).then(() => {
     console.log(id, 'Generated execution folder');
-    return fs.copy('./templates', folder);
+    return fs.copy('./environment', folder);
   }).then(() => {
     console.log(id, 'Copied execution files');
     return generateTLA(xml);
@@ -48,6 +42,12 @@ export async function checkModel(xml: string, term: string): Promise<string> {
           console.log(id, 'Cleaned up folder', folder);
         }).catch(error => {
           console.error(id, 'Error cleaning up', error);
+        })
+      } else {
+        fs.remove(folder + '/tla2tools.jar').then(() => {
+          console.log(id, 'Removed tla2tools.jar', folder);
+        }).catch(error => {
+          console.error(id, 'Error removing tla2tools.jar', error);
         })
       }
     }

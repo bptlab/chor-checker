@@ -14,7 +14,7 @@ const order = fs.readFileSync(path.join(__dirname, '/../assets/order.bpmn'), 'ut
 
 // prepare the TLA template
 const template = ejs.compile(
-  fs.readFileSync(path.join(__dirname, '/../templates/ChoreographyTemplate.ejs.tla'), 'utf-8')
+  fs.readFileSync(path.join(__dirname, '/../templates/Choreography.ejs.tla'), 'utf-8')
 );
 
 // some definitions
