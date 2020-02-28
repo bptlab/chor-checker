@@ -1,11 +1,16 @@
 <%
 
+function bracketize(str) {
+    return "\"" + str + "\"";
+}
+
 function outputMap(map) {
   if (map.size == 0) {
-    return '[ i \in {} |-> {}]';
+    //TODO: think about a proper output if there are no entries
+    return 'FALSE';
   } else {
     return Array.from(map.entries())
-     .map(entry => entry.map(e => "\"" + e + "\"").join(' :> '))
+     .map(entry => entry.map(bracketize).join(' :> '))
      .join(' @@ ');
   }
 }
@@ -18,10 +23,10 @@ EXTENDS TLC, Naturals, Types
 VARIABLES marking, timestamp, oracleValues, messageValues, curTx
 
 Nodes == {
-  <%- Array.from(nodeIDs.values()).join(', ') %>
+  <%- Array.from(nodeIDs.values()).map(bracketize).join(', ') %>
 }
 Flows == {
-  <%- Array.from(flowIDs.values()).join(', ') %>
+  <%- Array.from(flowIDs.values()).map(bracketize).join(', ') %>
 }
 
 source ==

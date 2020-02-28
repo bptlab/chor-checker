@@ -1,7 +1,8 @@
 README.md
 Dockerfile
 .gitignore
-tlc/states
+*/states
+execution
 
 .DS_Store
 node_modules

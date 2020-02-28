@@ -66,9 +66,17 @@ export function translateModel(choreo: Choreography): Object {
   nodes.forEach((flowNode, index) => {
     if (is('bpmn:ExclusiveGateway')(flowNode)) {
       let exclusiveGateway = <ExclusiveGateway> flowNode;
+      let flow: SequenceFlow;
       if (exclusiveGateway.default) {
-        defaultFlow.set(nodeIDs.get(exclusiveGateway), flowIDs.get(exclusiveGateway.default));
+        flow = exclusiveGateway.default;
+      } else {
+        // if no default flow was defined, just pick any --- this is just to
+        // simplify the TLA code later and has no consequences otherwise since
+        // we assume that a default flow is defined via the well-formedness
+        // property of the choreography
+        flow = exclusiveGateway.outgoing[0];
       }
+      defaultFlow.set(nodeIDs.get(exclusiveGateway), flowIDs.get(flow));
     }
 
     let type = '';

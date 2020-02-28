@@ -22,7 +22,6 @@ app.post('/', (req, res, next) => {
     res.status(200);
     res.set('Content-Type', 'application/json');
     res.send({ output });
-    console.log('success');
   }).catch(error => {
     next(error);
   });
