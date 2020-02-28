@@ -3,20 +3,21 @@
  * Takes as an input a BPMN choreography diagram and outputs a
  * TLA+ specification for it.
  */
-import { Choreography, FlowElement, SequenceFlow, ExclusiveGateway, FlowNode } from 'bpmn-moddle';
-import { is, parseModdle } from './helpers';
 import * as fs from 'fs';
 import * as path from 'path';
 import * as ejs from 'ejs';
+import { Choreography, SequenceFlow, ExclusiveGateway, FlowNode } from 'bpmn-moddle';
+import { is, getModel } from './helpers';
 
-// load files
+// load fallback file for testing
 const order = fs.readFileSync(path.join(__dirname, '/../assets/order.bpmn'), 'utf-8');
-const templateText = fs.readFileSync(path.join(__dirname, '/../templates/ChoreographyTemplate.ejs.tla'), 'utf-8');
 
-// compile template
-const template = ejs.compile(templateText);
+// prepare the TLA template
+const template = ejs.compile(
+  fs.readFileSync(path.join(__dirname, '/../templates/ChoreographyTemplate.ejs.tla'), 'utf-8')
+);
 
-
+// some definitions
 const SUPPORTED_FLOW_NODES : string[] = [
   'bpmn:ChoreographyTask',
   'bpmn:ParallelGateway',
@@ -26,16 +27,13 @@ const SUPPORTED_FLOW_NODES : string[] = [
   //'bpmn:IntermediateCatchEvent'
 ];
 
-export async function translate(xml: string = order): Promise<string> {
-  // parse model
-  let choreo = await parseModdle(order).then(definitions => {
-    const choreography = <Choreography> definitions.rootElements.find(is('bpmn:Choreography'));
-    if (!choreography) {
-      throw 'could not find a choreography instance';
-    }
-    return choreography;
+export function generateTLA(xml: string = order): Promise<string> {
+  return getModel(xml).then(choreo => {
+    return template(translateModel(choreo));
   });
+}
 
+export function translateModel(choreo: Choreography): Object {
   // collect relevant elements
   let nodes: FlowNode[] = <FlowNode[]> choreo.flowElements.filter(is(...SUPPORTED_FLOW_NODES));
   let flows: SequenceFlow[] = <SequenceFlow[]> choreo.flowElements.filter(is('bpmn:SequenceFlow'));
@@ -89,16 +87,15 @@ export async function translate(xml: string = order): Promise<string> {
   });
 
   // put all that stuff into the template
-  return template({
+  return {
     nodeIDs,
     flowIDs,
     source,
     target,
     nodeType,
     defaultFlow
-  });
+  };
 }
-
 
 /**
  * - NO ORACLES YET

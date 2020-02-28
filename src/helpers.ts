@@ -1,5 +1,23 @@
-import BpmnModdle, { Definitions } from 'bpmn-moddle';
+import BpmnModdle, { Definitions, Choreography } from 'bpmn-moddle';
 const moddle = new BpmnModdle();
+
+/**
+ * This function parses the BPMN XML format and returns a choreography model.
+ *
+ * @param xml String containing the BPMN XML
+ * @returns A promise resolving with a `Choreography` instance contained in the file
+ */
+export function getModel(xml: string): Promise<Choreography> {
+  return parseModdle(xml).then(definitions => {
+    // pick a choreography from the model
+    //TODO configurable pick
+    const choreo = <Choreography> definitions.rootElements.find(is('bpmn:Choreography'));
+    if (!choreo) {
+      throw 'could not find a choreography instance';
+    }
+    return choreo;
+  });
+}
 
 /**
  * This function parses the BPMN XML format and returns a bpmn-moddle representation of the diagram.

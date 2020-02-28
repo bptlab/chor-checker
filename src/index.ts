@@ -1,33 +1,50 @@
 import express from 'express';
-let child = require('child_process');
+import morgan from 'morgan';
+import cors from 'cors';
 
-import { translate } from './generator';
+import { checkModel } from './checker';
+import { generateTLA } from './generator';
 
 // setup server
 const app = express();
+app.use(cors());
+app.use(morgan('tiny'));
+app.use(express.urlencoded({ extended: true }));
+app.use(express.json());
+
 app.listen(3000, () => console.log('Listening on port 3000!'));
 
 // entrypoint for model checking
-app.get('/', (req, res) => {
-  let output : Buffer;
-  try {
-    output = child.execSync('java -classpath tla2tools.jar tlc2.TLC -deadlock -nowarning Choreography', { cwd: 'templates' });
-  }
-  catch (error) {
-    output = Buffer.concat([error.stdout, error.stderr]);
-  }
-  res.set('Content-Type', 'text/plain');
-  res.send(output);
+app.post('/', (req, res, next) => {
+  let model = req.body && req.body.diagram;
+  let term = req.body && req.body.term;
+  checkModel(model, term).then(output => {
+    res.status(200);
+    res.set('Content-Type', 'application/json');
+    res.send({ output });
+    console.log('success');
+  }).catch(error => {
+    next(error);
+  });
 });
 
-// entrypoint for the TLA converter
-app.get('/convert', (req, res) => {
-  translate().then(tla => {
-    res.set('Content-Type', 'text/plain');
-    res.send(tla);
+app.post('/convert', (req, res, next) => {
+  const model = req.body && req.body.diagram;
+  return generateTLA(model).then(tla => {
+    res.status(200);
+    res.set('Content-Type', 'application/json');
+    res.send({ tla });
   }).catch(error => {
-    res.set('Content-Type', 'text/plain');
-    res.send(error.message);
-    throw error;
+    next(error);
+  });
+});
+
+app.get('/convert', (req, res, next) => {
+  return generateTLA().then(tla => {
+    res.status(200);
+    res.set('Content-Type', 'application/json');
+    res.send({ tla });
+  }).catch(error => {
+    next(error);
   });
 });
