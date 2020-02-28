@@ -3,6 +3,7 @@ Dockerfile
 .gitignore
 */states
 execution
+antlr
 
 .DS_Store
 node_modules

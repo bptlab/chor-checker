@@ -1,4 +1,5 @@
 import { generateTLA } from './generator';
+import parse from './parser/parser';
 import fs from 'fs-extra';
 let child = require('child_process');
 
@@ -10,7 +11,7 @@ export async function checkModel(xml: string, term: string): Promise<string> {
   const id = new Date().getTime();
   const folder = EXECUTION_FOLDER + '/' + id;
   console.log('Start execution in', folder);
-  
+
   return fs.ensureDir(folder).then(() => {
     console.log(id, 'Generated execution folder');
     return fs.copy('./environment', folder);

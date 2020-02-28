@@ -5,3 +5,5 @@ dist
 *.log
 .idea/
 execution
+antlr/*
+!antlr/TLAplus.antlr

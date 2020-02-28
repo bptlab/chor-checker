@@ -1,0 +1,42 @@
+/*
+Basic grammar to parse a subset of the state output of TLC.
+
+Compile using:
+-  java -jar antlr-4.8-complete.jar -Dlanguage=JavaScript -visitor -no-listener TLAplus.antlr
+*/
+grammar TLAplus;
+
+def : (AND variable)+;
+variable : IDENTIFIER EQUALS value ;
+value : tuple
+      | mapping
+      | literal
+      ;
+
+tuple : TUPLE_OPEN value (COMMA value)* TUPLE_CLOSE ;
+mapping : MAPPING_OPEN mappingItem (COMMA mappingItem)* MAPPING_CLOSE ;
+mappingItem : IDENTIFIER MAPS_TO value ;
+literal : NUMBER
+        | STRING
+        | BOOLEAN
+        ;
+
+// literals
+BOOLEAN : 'TRUE' | 'FALSE' ;
+STRING : '"' .*? '"' ;
+NUMBER : '0' | [1-9][0-9]* ;
+
+// identifier
+IDENTIFIER : [a-zA-Z][a-zA-Z0-9_]* ;
+
+// symbols
+MAPS_TO : '|->' ;
+EQUALS : '=' ;
+AND : '/\\' ;
+COMMA : ',' ;
+TUPLE_OPEN : '<<' ;
+TUPLE_CLOSE : '>>' ;
+MAPPING_OPEN : '[' ;
+MAPPING_CLOSE : ']' ;
+
+WS : (' ' | '\t' | '\n')+ -> channel(HIDDEN) ;
