@@ -24,9 +24,13 @@
     "typescript": "^3.4.3"
   },
   "dependencies": {
+    "@types/morgan": "1.7.35",
+    "@types/cors": "2.8.6",
     "@types/bpmn-moddle": "^5.1.1",
     "@types/express": "^4.16.1",
     "@types/node": "^7.0.10",
+    "morgan": "1.9.1",
+    "cors": "2.8.5",
     "bpmn-moddle": "^5.1.6",
     "esm": "^3.2.22",
     "express": "^4.16.4",
