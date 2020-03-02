@@ -82,23 +82,37 @@ doStartChoreoTx(t, reset) ==
 
 startChoreoTx ==
   \E t \in Tasks :
-    \* direct enablement
+    \* direct enablement - _fi_ (_t_)
     \/ \E fi \in incoming(t) :
       /\ marking[fi][1]
       /\ doStartChoreoTx(t, {fi})
-    \* indirect enablement
+    \* indirect enablement - _fii_ (g) fi (_t_ | e...)
     \/ \E fi \in incoming(t) :
       /\ nodeType[source[fi]] = GatewayEvent
       /\ \E fii \in incoming(source[fi]) :
         /\ marking[fii][1]
+        /\ ~\E fi2 \in outgoing(source[fi]) :
+          /\ fi /= fi2
+          /\ target[fi2] = EventIntermediate
+          /\ evaluateIntermediateEvent(target[fi2], fii, marking, timestamp, oracleValues, messageValues)
         /\ doStartChoreoTx(t, {fi, fii})
-    \* conditional enablement
+    \* conditional enablement - _fii_ (e) fi (_t_)
     \/ \E fi \in incoming(t) :
       /\ nodeType[source[fi]] = EventIntermediate
       /\ \E fii \in incoming(source[fi]) :
         /\ marking[fii][1]
         /\ evaluateIntermediateEvent(source[fi], fii, marking, timestamp, oracleValues, messageValues)
         /\ doStartChoreoTx(t, {fi, fii})
+    \* conditional indirect enablement - _fiii_ (g) fii (e...) fi (_t_)
+    \/ \E fi \in incoming(t) :
+      /\ nodeType[source[fi]] = EventIntermediate
+      /\ \E fii \in incoming(source[fi]) :
+        /\ nodeType[source[fii]] = GatewayEvent
+        /\ \E fiii \in incoming(source[fii]) :
+          /\ marking[fiii][1]
+          /\ evaluateIntermediateEvent(source[fi], fiii, marking, timestamp, oracleValues, messageValues)
+          (* TODO AND NO EARLIER ENABLED *)
+          /\ doStartChoreoTx(t, {fi, fii, fiii})
 
 startOracleTx ==
   \E o \in Oracles : \E v \in OracleDomain[o] :
@@ -145,6 +159,7 @@ TypeInvariant ==
 
 (* properties *)
 Safety ==
-  [](\E f \in Flows : marking[f][1])
+\*  [](\E f \in Flows : marking[f][1])
+  [](~marking["SequenceFlow_0z9kgu5"][1])
 
 ================================================================

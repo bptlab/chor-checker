@@ -177,7 +177,7 @@ export function translateModel(choreo: Choreography): Object {
       const timerDef = (<TimerEventDefinition> definition);
       let expression;
       if (timerDef.timeDuration) {
-        expression = 'ti - ma[f][2] >= ' + timerDef.timeDuration.body;
+        expression = 'ti >= ma[f][2] + ' + timerDef.timeDuration.body;
       } else if (timerDef.timeDate) {
         expression = 'ti = ' + timerDef.timeDate.body;
       }
