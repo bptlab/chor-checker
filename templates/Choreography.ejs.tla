@@ -46,12 +46,10 @@ defaultFlow ==
   <%- outputMap(defaultFlow) %>
 
 Oracles == {
-  "EURUSD",
-  "WEATHER"
+  <%- oracles.map(o => o.name).map(bracketize).join(', ') %>
 }
 OracleDomain ==
-   "EURUSD" :> { 1, 2, 3 }
-@@ "WEATHER" :> { 8, 9, 10 }
+  <%- oracles.map(o => [bracketize(o.name), '{' + o.values.join(', ') + '}'].join(' :> ')).join(' @@ ') %>
 AllOracleDomains == UNION { OracleDomain[o] : o \in DOMAIN OracleDomain }
 
 MessageDomain == { 100 }

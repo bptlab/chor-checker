@@ -94,6 +94,15 @@ export function translateModel(choreo: Choreography): Object {
     nodeType.set(nodeIDs.get(flowNode), type);
   });
 
+  // check if we have oracles involved
+  let oracles = [];
+  if (choreo.documentation) {
+    const doc = JSON.parse(choreo.documentation.map(d => d.text).join());
+    if (doc && doc.oracles) {
+      oracles = doc.oracles;
+    }
+  }
+
   // put all that stuff into the template
   return {
     nodeIDs,
@@ -101,7 +110,8 @@ export function translateModel(choreo: Choreography): Object {
     source,
     target,
     nodeType,
-    defaultFlow
+    defaultFlow,
+    oracles
   };
 }
 
