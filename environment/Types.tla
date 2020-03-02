@@ -7,16 +7,14 @@ GatewayParallel == "GatewayParallel"
 GatewayEvent == "GatewayEvent"
 EventStart == "EventStart"
 EventEnd == "EventEnd"
-EventConditional == "EventConditional"
-EventTimer == "EventTimer"
+EventIntermediate == "EventIntermediate"
 
 FlowNormal == "FlowNormal"
 FlowConditional == "FlowConditional"
 FlowDefault == "FlowDefault"
 
-EventIntermediateType == { EventConditional, EventTimer }
 GatewayType == { GatewayExclusive, GatewayParallel, GatewayEvent }
-EventType == { EventStart, EventEnd } \union EventIntermediateType
+EventType == { EventStart, EventIntermediate, EventEnd }
 FlowType == { FlowNormal, FlowConditional, FlowDefault }
 
 NodeType == { Task } \union GatewayType \union EventType

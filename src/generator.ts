@@ -7,7 +7,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import * as ejs from 'ejs';
 import jsep from "jsep";
-import { Choreography, SequenceFlow, ExclusiveGateway, FlowNode } from 'bpmn-moddle';
+import { Choreography, SequenceFlow, ExclusiveGateway, FlowNode, IntermediateCatchEvent, ConditionalEventDefinition } from 'bpmn-moddle';
 import { is, getModel } from './helpers';
 
 // load fallback file for testing
@@ -24,8 +24,8 @@ const SUPPORTED_FLOW_NODES : string[] = [
   'bpmn:ParallelGateway',
   'bpmn:ExclusiveGateway',
   'bpmn:StartEvent',
-  'bpmn:EndEvent'
-  //'bpmn:IntermediateCatchEvent'
+  'bpmn:EndEvent',
+  'bpmn:IntermediateCatchEvent'
 ];
 
 export function generateTLA(xml: string = order): Promise<string> {
@@ -57,6 +57,7 @@ export function translateModel(choreo: Choreography): Object {
   let nodeType: Map<string, string> = new Map();
   let defaultFlow: Map<string, string> = new Map();
   let flowConditions: Map<string, string> = new Map();
+  let eventConditions: Map<string, string> = new Map();
   let oracles: Array<object> = [];
 
   // check if we have oracles involved
@@ -74,7 +75,7 @@ export function translateModel(choreo: Choreography): Object {
   });
   
   // build default flow relation and node types
-  nodes.forEach((flowNode, index) => {
+  nodes.forEach(flowNode => {
     if (is('bpmn:ExclusiveGateway')(flowNode)) {
       let exclusiveGateway = <ExclusiveGateway> flowNode;
 
@@ -111,10 +112,27 @@ export function translateModel(choreo: Choreography): Object {
       type = 'GatewayExclusive';
     } else if (is('bpmn:StartEvent')(flowNode)) {
       type = 'EventStart';
+    } else if (is('bpmn:IntermediateCatchEvent')(flowNode)) {
+      type = 'EventIntermediate';
     } else if (is('bpmn:EndEvent')(flowNode)) {
       type = 'EventEnd';
     }
     nodeType.set(nodeIDs.get(flowNode), type);
+  });
+
+  // translate intermediate catch events
+  nodes.filter(is('bpmn:IntermediateCatchEvent')).forEach(flowNode => {
+    const event = <IntermediateCatchEvent> flowNode;
+    const definition = event.eventDefinitions[0];
+    console.log('found event with',definition);
+
+    if (is('bpmn:ConditionalEventDefinition')(definition)) {
+      const expression = (<ConditionalEventDefinition> definition).condition.body;
+      eventConditions.set(
+        nodeIDs.get(event),
+        transpileExpression(expression, oracles, undefined) // TODO add messages
+      );
+    }
   });
 
   // put all that stuff into the template
@@ -126,6 +144,7 @@ export function translateModel(choreo: Choreography): Object {
     nodeType,
     defaultFlow,
     flowConditions,
+    eventConditions,
     oracles
   };
 }

@@ -60,7 +60,7 @@ propagateFlow ==
        CASE nodeType[n] = GatewayParallel -> gatewayParallel(n)
          [] nodeType[n] = GatewayExclusive -> gatewayExclusive(n)
          [] nodeType[n] = EventEnd -> eventEnd(n)
-         [] nodeType[n] \in EventIntermediateType -> eventIntermediate(n)
+         [] nodeType[n] = EventIntermediate -> eventIntermediate(n)
          [] OTHER -> FALSE
 
 (* end transactions *)

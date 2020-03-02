@@ -57,12 +57,24 @@ MessageDomain == { 100 }
 PayloadDomain == { NoPayload } \union MessageDomain \union AllOracleDomains
 
 (* For these conditions, we can not use the variables directly. We have
-   to get them as parameters. TODO Think of a better naming. *)
-evaluateIntermediateEvent(n, f, ma, ti, or, me) == FALSE
+   to get them as parameters. *)
+evaluateIntermediateEvent(n, f, ma, ti, or, me) ==
+<% if (eventConditions.size == 0) { _%>
+  FALSE
+<% } else { _%>
+  CASE
+  <%- Array.from(eventConditions.entries()).map(e => ['n=' + bracketize(e[0]), e[1]].join(' -> ')).join(' [] ') %>
+  [] OTHER -> FALSE
+<% } %>
 
-evaluateFlow(f, or, me) == CASE
+evaluateFlow(f, or, me) ==
+<% if (flowConditions.size == 0) { _%>
+  FALSE
+<% } else { _%>
+  CASE
   <%- Array.from(flowConditions.entries()).map(e => ['f=' + bracketize(e[0]), e[1]].join(' -> ')).join(' [] ') %>
   [] OTHER -> FALSE
+<% } %>
 
 INSTANCE Semantics
 
