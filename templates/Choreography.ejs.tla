@@ -60,9 +60,7 @@ OracleDomain ==
 <% if (oracles.length == 0) { _%>
   [i \in {} |-> {}]
 <% } else { _%>
-{
   <%- oracles.map(o => [bracketize(o.name), '{' + o.values.join(', ') + '}'].join(' :> ')).join(' @@ ') %>
-}
 <% } %>
 
 AllOracleDomains == UNION { OracleDomain[o] : o \in DOMAIN OracleDomain }
