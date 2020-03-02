@@ -6,6 +6,7 @@ EXTENDS TLC, FiniteSets, Naturals, Types, Definitions
 Problems:
   - we have to do symbolic abstraction somehow for conditions, otherwise the state-space becomes too big
   - maybe time scaling, i.e., when blocktime is 5 seconds but an event calls for a month
+  - propagate flow always propagates globally... so we would have to implement a set or something that keeps track of the flows to propagate during the current tx to avoid global side-effects
 
 Optimization:
   - allow oracles to change only once per timestep
@@ -25,6 +26,11 @@ eventIntermediate(n) ==
                         IF ff = f THEN <<FALSE, timestamp>>
                         ELSE IF ff \in outgoing(n) THEN <<TRUE, timestamp>>
                         ELSE marking[ff] ]
+
+\* TODO add gateway handling when first encountered
+\* gatewayEvent(n) ==
+\*   /\ \E f \in incoming(n) :
+\*     /\ marking[f][1]
 
 gatewayParallel(n) ==
   /\ \A f \in incoming(n) : marking[f][1]
@@ -64,18 +70,35 @@ endTx ==
   /\ curTx' = <<NoTx, timestamp, NoPayload>>
 
 (* start transactions *)
+doStartChoreoTx(t, reset) ==
+  /\ marking' = [ f \in DOMAIN marking |->
+                      IF f \in reset THEN <<FALSE, timestamp>>
+                      ELSE IF f \in outgoing(t) THEN <<TRUE, timestamp>>
+                      ELSE marking[f] ]
+  /\ \E mv \in MessageDomain[t] :
+    /\ curTx' = <<ChoreoTx, timestamp, mv>>
+    /\ messageValues' = [ messageValues EXCEPT ![t] = mv ]
+  /\ UNCHANGED <<oracleValues, timestamp>>
+
 startChoreoTx ==
   \E t \in Tasks :
-    \E fi \in incoming(t) :
+    \* direct enablement
+    \/ \E fi \in incoming(t) :
       /\ marking[fi][1]
-      /\ marking' = [ f \in DOMAIN marking |->
-                          IF f = fi THEN <<FALSE, timestamp>>
-                          ELSE IF f \in outgoing(t) THEN <<TRUE, timestamp>>
-                          ELSE marking[f] ]
-      /\ \E mv \in MessageDomain[t] :
-        /\ curTx' = <<ChoreoTx, timestamp, mv>>
-        /\ messageValues' = [ messageValues EXCEPT ![t] = mv ]
-      /\ UNCHANGED <<oracleValues, timestamp>>
+      /\ doStartChoreoTx(t, {fi})
+    \* indirect enablement
+    \/ \E fi \in incoming(t) :
+      /\ nodeType[source[fi]] = GatewayEvent
+      /\ \E fii \in incoming(source[fi]) :
+        /\ marking[fii][1]
+        /\ doStartChoreoTx(t, {fi, fii})
+    \* conditional enablement
+    \/ \E fi \in incoming(t) :
+      /\ nodeType[source[fi]] = EventIntermediate
+      /\ \E fii \in incoming(source[fi]) :
+        /\ marking[fii][1]
+        /\ evaluateIntermediateEvent(source[fi], fii, marking, timestamp, oracleValues, messageValues)
+        /\ doStartChoreoTx(t, {fi, fii})
 
 startOracleTx ==
   \E o \in Oracles : \E v \in OracleDomain[o] :
