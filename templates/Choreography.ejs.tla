@@ -52,7 +52,7 @@ OracleDomain ==
   <%- oracles.map(o => [bracketize(o.name), '{' + o.values.join(', ') + '}'].join(' :> ')).join(' @@ ') %>
 AllOracleDomains == UNION { OracleDomain[o] : o \in DOMAIN OracleDomain }
 
-MessageDomain == { 100 }
+MessageDomain == { 0, 100 }
 
 PayloadDomain == { NoPayload } \union MessageDomain \union AllOracleDomains
 

@@ -86,7 +86,7 @@ startOracleTx ==
   \E o \in Oracles : \E v \in OracleDomain[o] :
     /\ oracleValues' = [ oracleValues EXCEPT ![o] = v ]
     /\ curTx' = <<OracleTx, timestamp, v>>
-  /\ UNCHANGED <<marking, oracleValues, messageValues, timestamp>>
+  /\ UNCHANGED <<marking, messageValues, timestamp>>
 
 (* timestep processing *)
 timestep ==
@@ -119,7 +119,7 @@ TypeInvariant ==
   /\ marking \in [ Flows -> BOOLEAN \X Nat ]
   /\ oracleValues \in [ Oracles -> AllOracleDomains ]
   /\ \A o \in Oracles : oracleValues[o] \in OracleDomain[o]
-  /\ messageValues \in [ Tasks -> Nat ]
+  /\ messageValues \in [ Tasks -> MessageDomain ]
   /\ timestamp \in Nat
   /\ curTx \in TxType \X Nat \X PayloadDomain \* restrict payloads to allowed ones for each oracle/choreo call *\
 

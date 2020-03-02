@@ -124,7 +124,6 @@ export function translateModel(choreo: Choreography): Object {
   nodes.filter(is('bpmn:IntermediateCatchEvent')).forEach(flowNode => {
     const event = <IntermediateCatchEvent> flowNode;
     const definition = event.eventDefinitions[0];
-    console.log('found event with',definition);
 
     if (is('bpmn:ConditionalEventDefinition')(definition)) {
       const expression = (<ConditionalEventDefinition> definition).condition.body;
@@ -225,8 +224,3 @@ function walkExpression(expr: jsep.Expression, oracles, messages): string {
   // enforce full bracketization for non-identifiers or non-literals
   return '(' + output + ')';
 }
-
-/**
- * - NO CONDITIONS YET
- * - NO INTERMEDIATE EVENTS YET
- */
