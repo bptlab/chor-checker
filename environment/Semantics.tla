@@ -7,11 +7,6 @@ Problems:
   - we have to do symbolic abstraction somehow for conditions, otherwise the state-space becomes too big
   - maybe time scaling, i.e., when blocktime is 5 seconds but an event calls for a month
 
-Idea:
-  - create separate start/end transaction states
-  - a transaction is locked until there is no more work to do inside it
-  - that way we do not have to cram everything into a single transition
-
 Optimization:
   - allow oracles to change only once per timestep
 *)
