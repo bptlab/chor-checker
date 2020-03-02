@@ -22,6 +22,8 @@ EXTENDS TLC, Naturals, Types
 
 VARIABLES marking, timestamp, oracleValues, messageValues, curTx
 
+PUSH_ORACLES == TRUE
+
 Nodes == {
   <%- Array.from(nodeIDs.values()).map(bracketize).join(', ') %>
 }

@@ -3,6 +3,7 @@
 EXTENDS Types
 
 CONSTANTS
+    PUSH_ORACLES,
     Nodes, Flows, Oracles, OracleDomain, AllOracleDomains, PayloadDomain, MessageDomain,
     source, target, nodeType, defaultFlow, evaluateIntermediateEvent(_,_,_,_,_,_), evaluateFlow(_,_,_)
 

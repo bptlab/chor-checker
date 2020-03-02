@@ -101,8 +101,9 @@ Next ==
     \/ timestep
   ELSE
     /\ UNCHANGED timestamp
-    /\ propagateFlow
-      \/ endTx
+    /\ IF PUSH_ORACLES \/ curTx[1] = ChoreoTx
+       THEN propagateFlow \/ endTx
+       ELSE endTx
 
 Init ==
   /\ marking = [ f \in Flows |->
