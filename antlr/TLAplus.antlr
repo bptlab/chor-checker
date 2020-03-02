@@ -6,15 +6,15 @@ Compile using:
 */
 grammar TLAplus;
 
-def : (AND variable)+;
+def : (AND variable)+ ;
 variable : IDENTIFIER EQUALS value ;
 value : tuple
       | mapping
       | literal
       ;
 
-tuple : TUPLE_OPEN value (COMMA value)* TUPLE_CLOSE ;
-mapping : MAPPING_OPEN mappingItem (COMMA mappingItem)* MAPPING_CLOSE ;
+tuple : TUPLE_OPEN (value (COMMA value)*)? TUPLE_CLOSE ;
+mapping : MAPPING_OPEN (mappingItem (COMMA mappingItem)*)? MAPPING_CLOSE ;
 mappingItem : IDENTIFIER MAPS_TO value ;
 literal : NUMBER
         | STRING

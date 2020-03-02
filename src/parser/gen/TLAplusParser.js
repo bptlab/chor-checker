@@ -7,41 +7,44 @@ var grammarFileName = "TLAplus.antlr";
 
 
 var serializedATN = ["\u0003\u608b\ua72a\u8133\ub9ed\u417c\u3be7\u7786\u5964",
-    "\u0003\u000f<\u0004\u0002\t\u0002\u0004\u0003\t\u0003\u0004\u0004\t",
+    "\u0003\u000f@\u0004\u0002\t\u0002\u0004\u0003\t\u0003\u0004\u0004\t",
     "\u0004\u0004\u0005\t\u0005\u0004\u0006\t\u0006\u0004\u0007\t\u0007\u0004",
     "\b\t\b\u0003\u0002\u0003\u0002\u0006\u0002\u0013\n\u0002\r\u0002\u000e",
     "\u0002\u0014\u0003\u0003\u0003\u0003\u0003\u0003\u0003\u0003\u0003\u0004",
     "\u0003\u0004\u0003\u0004\u0005\u0004\u001e\n\u0004\u0003\u0005\u0003",
     "\u0005\u0003\u0005\u0003\u0005\u0007\u0005$\n\u0005\f\u0005\u000e\u0005",
-    "\'\u000b\u0005\u0003\u0005\u0003\u0005\u0003\u0006\u0003\u0006\u0003",
-    "\u0006\u0003\u0006\u0007\u0006/\n\u0006\f\u0006\u000e\u00062\u000b\u0006",
-    "\u0003\u0006\u0003\u0006\u0003\u0007\u0003\u0007\u0003\u0007\u0003\u0007",
-    "\u0003\b\u0003\b\u0003\b\u0002\u0002\t\u0002\u0004\u0006\b\n\f\u000e",
-    "\u0002\u0003\u0003\u0002\u0003\u0005\u00029\u0002\u0012\u0003\u0002",
-    "\u0002\u0002\u0004\u0016\u0003\u0002\u0002\u0002\u0006\u001d\u0003\u0002",
-    "\u0002\u0002\b\u001f\u0003\u0002\u0002\u0002\n*\u0003\u0002\u0002\u0002",
-    "\f5\u0003\u0002\u0002\u0002\u000e9\u0003\u0002\u0002\u0002\u0010\u0011",
-    "\u0007\t\u0002\u0002\u0011\u0013\u0005\u0004\u0003\u0002\u0012\u0010",
-    "\u0003\u0002\u0002\u0002\u0013\u0014\u0003\u0002\u0002\u0002\u0014\u0012",
-    "\u0003\u0002\u0002\u0002\u0014\u0015\u0003\u0002\u0002\u0002\u0015\u0003",
-    "\u0003\u0002\u0002\u0002\u0016\u0017\u0007\u0006\u0002\u0002\u0017\u0018",
-    "\u0007\b\u0002\u0002\u0018\u0019\u0005\u0006\u0004\u0002\u0019\u0005",
-    "\u0003\u0002\u0002\u0002\u001a\u001e\u0005\b\u0005\u0002\u001b\u001e",
-    "\u0005\n\u0006\u0002\u001c\u001e\u0005\u000e\b\u0002\u001d\u001a\u0003",
-    "\u0002\u0002\u0002\u001d\u001b\u0003\u0002\u0002\u0002\u001d\u001c\u0003",
-    "\u0002\u0002\u0002\u001e\u0007\u0003\u0002\u0002\u0002\u001f \u0007",
-    "\u000b\u0002\u0002 %\u0005\u0006\u0004\u0002!\"\u0007\n\u0002\u0002",
-    "\"$\u0005\u0006\u0004\u0002#!\u0003\u0002\u0002\u0002$\'\u0003\u0002",
-    "\u0002\u0002%#\u0003\u0002\u0002\u0002%&\u0003\u0002\u0002\u0002&(\u0003",
-    "\u0002\u0002\u0002\'%\u0003\u0002\u0002\u0002()\u0007\f\u0002\u0002",
-    ")\t\u0003\u0002\u0002\u0002*+\u0007\r\u0002\u0002+0\u0005\f\u0007\u0002",
-    ",-\u0007\n\u0002\u0002-/\u0005\f\u0007\u0002.,\u0003\u0002\u0002\u0002",
-    "/2\u0003\u0002\u0002\u00020.\u0003\u0002\u0002\u000201\u0003\u0002\u0002",
-    "\u000213\u0003\u0002\u0002\u000220\u0003\u0002\u0002\u000234\u0007\u000e",
-    "\u0002\u00024\u000b\u0003\u0002\u0002\u000256\u0007\u0006\u0002\u0002",
-    "67\u0007\u0007\u0002\u000278\u0005\u0006\u0004\u00028\r\u0003\u0002",
-    "\u0002\u00029:\t\u0002\u0002\u0002:\u000f\u0003\u0002\u0002\u0002\u0006",
-    "\u0014\u001d%0"].join("");
+    "\'\u000b\u0005\u0005\u0005)\n\u0005\u0003\u0005\u0003\u0005\u0003\u0006",
+    "\u0003\u0006\u0003\u0006\u0003\u0006\u0007\u00061\n\u0006\f\u0006\u000e",
+    "\u00064\u000b\u0006\u0005\u00066\n\u0006\u0003\u0006\u0003\u0006\u0003",
+    "\u0007\u0003\u0007\u0003\u0007\u0003\u0007\u0003\b\u0003\b\u0003\b\u0002",
+    "\u0002\t\u0002\u0004\u0006\b\n\f\u000e\u0002\u0003\u0003\u0002\u0003",
+    "\u0005\u0002?\u0002\u0012\u0003\u0002\u0002\u0002\u0004\u0016\u0003",
+    "\u0002\u0002\u0002\u0006\u001d\u0003\u0002\u0002\u0002\b\u001f\u0003",
+    "\u0002\u0002\u0002\n,\u0003\u0002\u0002\u0002\f9\u0003\u0002\u0002\u0002",
+    "\u000e=\u0003\u0002\u0002\u0002\u0010\u0011\u0007\t\u0002\u0002\u0011",
+    "\u0013\u0005\u0004\u0003\u0002\u0012\u0010\u0003\u0002\u0002\u0002\u0013",
+    "\u0014\u0003\u0002\u0002\u0002\u0014\u0012\u0003\u0002\u0002\u0002\u0014",
+    "\u0015\u0003\u0002\u0002\u0002\u0015\u0003\u0003\u0002\u0002\u0002\u0016",
+    "\u0017\u0007\u0006\u0002\u0002\u0017\u0018\u0007\b\u0002\u0002\u0018",
+    "\u0019\u0005\u0006\u0004\u0002\u0019\u0005\u0003\u0002\u0002\u0002\u001a",
+    "\u001e\u0005\b\u0005\u0002\u001b\u001e\u0005\n\u0006\u0002\u001c\u001e",
+    "\u0005\u000e\b\u0002\u001d\u001a\u0003\u0002\u0002\u0002\u001d\u001b",
+    "\u0003\u0002\u0002\u0002\u001d\u001c\u0003\u0002\u0002\u0002\u001e\u0007",
+    "\u0003\u0002\u0002\u0002\u001f(\u0007\u000b\u0002\u0002 %\u0005\u0006",
+    "\u0004\u0002!\"\u0007\n\u0002\u0002\"$\u0005\u0006\u0004\u0002#!\u0003",
+    "\u0002\u0002\u0002$\'\u0003\u0002\u0002\u0002%#\u0003\u0002\u0002\u0002",
+    "%&\u0003\u0002\u0002\u0002&)\u0003\u0002\u0002\u0002\'%\u0003\u0002",
+    "\u0002\u0002( \u0003\u0002\u0002\u0002()\u0003\u0002\u0002\u0002)*\u0003",
+    "\u0002\u0002\u0002*+\u0007\f\u0002\u0002+\t\u0003\u0002\u0002\u0002",
+    ",5\u0007\r\u0002\u0002-2\u0005\f\u0007\u0002./\u0007\n\u0002\u0002/",
+    "1\u0005\f\u0007\u00020.\u0003\u0002\u0002\u000214\u0003\u0002\u0002",
+    "\u000220\u0003\u0002\u0002\u000223\u0003\u0002\u0002\u000236\u0003\u0002",
+    "\u0002\u000242\u0003\u0002\u0002\u00025-\u0003\u0002\u0002\u000256\u0003",
+    "\u0002\u0002\u000267\u0003\u0002\u0002\u000278\u0007\u000e\u0002\u0002",
+    "8\u000b\u0003\u0002\u0002\u00029:\u0007\u0006\u0002\u0002:;\u0007\u0007",
+    "\u0002\u0002;<\u0005\u0006\u0004\u0002<\r\u0003\u0002\u0002\u0002=>",
+    "\t\u0002\u0002\u0002>\u000f\u0003\u0002\u0002\u0002\b\u0014\u001d%(",
+    "25"].join("");
 
 
 var atn = new antlr4.atn.ATNDeserializer().deserialize(serializedATN);
@@ -360,6 +363,10 @@ TupleContext.prototype.TUPLE_OPEN = function() {
     return this.getToken(TLAplusParser.TUPLE_OPEN, 0);
 };
 
+TupleContext.prototype.TUPLE_CLOSE = function() {
+    return this.getToken(TLAplusParser.TUPLE_CLOSE, 0);
+};
+
 TupleContext.prototype.value = function(i) {
     if(i===undefined) {
         i = null;
@@ -369,10 +376,6 @@ TupleContext.prototype.value = function(i) {
     } else {
         return this.getTypedRuleContext(ValueContext,i);
     }
-};
-
-TupleContext.prototype.TUPLE_CLOSE = function() {
-    return this.getToken(TLAplusParser.TUPLE_CLOSE, 0);
 };
 
 TupleContext.prototype.COMMA = function(i) {
@@ -409,21 +412,27 @@ TLAplusParser.prototype.tuple = function() {
         this.enterOuterAlt(localctx, 1);
         this.state = 29;
         this.match(TLAplusParser.TUPLE_OPEN);
-        this.state = 30;
-        this.value();
-        this.state = 35;
+        this.state = 38;
         this._errHandler.sync(this);
         _la = this._input.LA(1);
-        while(_la===TLAplusParser.COMMA) {
-            this.state = 31;
-            this.match(TLAplusParser.COMMA);
-            this.state = 32;
+        if((((_la) & ~0x1f) == 0 && ((1 << _la) & ((1 << TLAplusParser.BOOLEAN) | (1 << TLAplusParser.STRING) | (1 << TLAplusParser.NUMBER) | (1 << TLAplusParser.TUPLE_OPEN) | (1 << TLAplusParser.MAPPING_OPEN))) !== 0)) {
+            this.state = 30;
             this.value();
-            this.state = 37;
+            this.state = 35;
             this._errHandler.sync(this);
             _la = this._input.LA(1);
+            while(_la===TLAplusParser.COMMA) {
+                this.state = 31;
+                this.match(TLAplusParser.COMMA);
+                this.state = 32;
+                this.value();
+                this.state = 37;
+                this._errHandler.sync(this);
+                _la = this._input.LA(1);
+            }
         }
-        this.state = 38;
+
+        this.state = 40;
         this.match(TLAplusParser.TUPLE_CLOSE);
     } catch (re) {
     	if(re instanceof antlr4.error.RecognitionException) {
@@ -460,6 +469,10 @@ MappingContext.prototype.MAPPING_OPEN = function() {
     return this.getToken(TLAplusParser.MAPPING_OPEN, 0);
 };
 
+MappingContext.prototype.MAPPING_CLOSE = function() {
+    return this.getToken(TLAplusParser.MAPPING_CLOSE, 0);
+};
+
 MappingContext.prototype.mappingItem = function(i) {
     if(i===undefined) {
         i = null;
@@ -469,10 +482,6 @@ MappingContext.prototype.mappingItem = function(i) {
     } else {
         return this.getTypedRuleContext(MappingItemContext,i);
     }
-};
-
-MappingContext.prototype.MAPPING_CLOSE = function() {
-    return this.getToken(TLAplusParser.MAPPING_CLOSE, 0);
 };
 
 MappingContext.prototype.COMMA = function(i) {
@@ -507,23 +516,29 @@ TLAplusParser.prototype.mapping = function() {
     var _la = 0; // Token type
     try {
         this.enterOuterAlt(localctx, 1);
-        this.state = 40;
+        this.state = 42;
         this.match(TLAplusParser.MAPPING_OPEN);
-        this.state = 41;
-        this.mappingItem();
-        this.state = 46;
+        this.state = 51;
         this._errHandler.sync(this);
         _la = this._input.LA(1);
-        while(_la===TLAplusParser.COMMA) {
-            this.state = 42;
-            this.match(TLAplusParser.COMMA);
+        if(_la===TLAplusParser.IDENTIFIER) {
             this.state = 43;
             this.mappingItem();
             this.state = 48;
             this._errHandler.sync(this);
             _la = this._input.LA(1);
+            while(_la===TLAplusParser.COMMA) {
+                this.state = 44;
+                this.match(TLAplusParser.COMMA);
+                this.state = 45;
+                this.mappingItem();
+                this.state = 50;
+                this._errHandler.sync(this);
+                _la = this._input.LA(1);
+            }
         }
-        this.state = 49;
+
+        this.state = 53;
         this.match(TLAplusParser.MAPPING_CLOSE);
     } catch (re) {
     	if(re instanceof antlr4.error.RecognitionException) {
@@ -587,11 +602,11 @@ TLAplusParser.prototype.mappingItem = function() {
     this.enterRule(localctx, 10, TLAplusParser.RULE_mappingItem);
     try {
         this.enterOuterAlt(localctx, 1);
-        this.state = 51;
+        this.state = 55;
         this.match(TLAplusParser.IDENTIFIER);
-        this.state = 52;
+        this.state = 56;
         this.match(TLAplusParser.MAPS_TO);
-        this.state = 53;
+        this.state = 57;
         this.value();
     } catch (re) {
     	if(re instanceof antlr4.error.RecognitionException) {
@@ -656,7 +671,7 @@ TLAplusParser.prototype.literal = function() {
     var _la = 0; // Token type
     try {
         this.enterOuterAlt(localctx, 1);
-        this.state = 55;
+        this.state = 59;
         _la = this._input.LA(1);
         if(!((((_la) & ~0x1f) == 0 && ((1 << _la) & ((1 << TLAplusParser.BOOLEAN) | (1 << TLAplusParser.STRING) | (1 << TLAplusParser.NUMBER))) !== 0))) {
         this._errHandler.recoverInline(this);
