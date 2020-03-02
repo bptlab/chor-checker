@@ -6,6 +6,7 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import * as ejs from 'ejs';
+import jsep from "jsep";
 import { Choreography, SequenceFlow, ExclusiveGateway, FlowNode } from 'bpmn-moddle';
 import { is, getModel } from './helpers';
 
@@ -55,6 +56,16 @@ export function translateModel(choreo: Choreography): Object {
   let target: Map<string, string> = new Map();
   let nodeType: Map<string, string> = new Map();
   let defaultFlow: Map<string, string> = new Map();
+  let flowConditions: Map<string, string> = new Map();
+  let oracles: Array<object> = [];
+
+  // check if we have oracles involved
+  if (choreo.documentation) {
+    const doc = JSON.parse(choreo.documentation.map(d => d.text).join());
+    if (doc && doc.oracles) {
+      oracles = doc.oracles;
+    }
+  }
 
   // build source/target relation
   flows.forEach(sequenceFlow => {
@@ -66,6 +77,18 @@ export function translateModel(choreo: Choreography): Object {
   nodes.forEach((flowNode, index) => {
     if (is('bpmn:ExclusiveGateway')(flowNode)) {
       let exclusiveGateway = <ExclusiveGateway> flowNode;
+
+      // conditions
+      exclusiveGateway.outgoing.forEach(outgoing => {
+        if (outgoing.conditionExpression && outgoing.conditionExpression.body) {
+          flowConditions.set(
+            flowIDs.get(outgoing),
+            transpileExpression(outgoing.conditionExpression.body, oracles, undefined) // TODO add messages
+          );
+        }
+      });
+
+      // default flow
       let flow: SequenceFlow;
       if (exclusiveGateway.default) {
         flow = exclusiveGateway.default;
@@ -94,15 +117,6 @@ export function translateModel(choreo: Choreography): Object {
     nodeType.set(nodeIDs.get(flowNode), type);
   });
 
-  // check if we have oracles involved
-  let oracles = [];
-  if (choreo.documentation) {
-    const doc = JSON.parse(choreo.documentation.map(d => d.text).join());
-    if (doc && doc.oracles) {
-      oracles = doc.oracles;
-    }
-  }
-
   // put all that stuff into the template
   return {
     nodeIDs,
@@ -111,13 +125,89 @@ export function translateModel(choreo: Choreography): Object {
     target,
     nodeType,
     defaultFlow,
+    flowConditions,
     oracles
   };
 }
 
+function transpileExpression(expr: string, oracles, messages): string {
+  return walkExpression(jsep(expr), oracles, messages);
+}
+
+function walkExpression(expr: jsep.Expression, oracles, messages): string {
+  let output: string;
+  let operator: string;
+  switch (expr.type) {
+    case 'BinaryExpression':
+      const binaryExpr = <jsep.BinaryExpression> expr;
+      operator = binaryExpr.operator;
+      switch (binaryExpr.operator) {
+        case '==':
+          operator = '=';
+          break;
+        case '+':
+        case '-':
+        case '*':
+        case '/':
+          operator = binaryExpr.operator;
+          break;
+        default:
+          throw 'unexpected operator in binary expression: ' + operator;
+      }
+      output = walkExpression(binaryExpr.left, oracles, messages)
+        + operator
+        + walkExpression(binaryExpr.right, oracles, messages);
+      break;
+
+    case 'LogicalExpression':
+      const logicalExpr = <jsep.LogicalExpression> expr;
+      operator = logicalExpr.operator;
+      switch (logicalExpr.operator) {
+        case '||':
+          operator = '\\/';
+          break;
+        case '&&':
+          operator = '/\\';
+          break;
+        default:
+          throw 'unexpected operator in logical expression: ' + operator;
+      }
+      output = walkExpression(logicalExpr.left, oracles, messages)
+        + operator
+        + walkExpression(logicalExpr.right, oracles, messages);
+      break;
+
+    case 'UnaryExpression':
+      const unaryExpr = <jsep.UnaryExpression> expr;
+      switch (unaryExpr.operator) {
+        case '!':
+          output = '~' + walkExpression(unaryExpr.argument, oracles, messages);
+          break;
+        default:
+          throw 'unexpected operator in unary expression ' + unaryExpr.operator;
+      }
+      break;
+
+    case 'Identifier':
+      // lookup oracles
+      const identifier = <jsep.Identifier> expr;
+      if (oracles.find(oracle => oracle.name == identifier.name)) {
+        return 'or["' + identifier.name + '"]';
+      }
+      throw 'unexpected identifier, neither oracle nor message: ' + identifier.name;
+
+    case 'Literal':
+      return (<jsep.Literal> expr).raw;
+
+    default:
+      throw 'unexpected expression: ' + expr;
+  }
+
+  // enforce full bracketization for non-identifiers or non-literals
+  return '(' + output + ')';
+}
+
 /**
- * - NO ORACLES YET
  * - NO CONDITIONS YET
  * - NO INTERMEDIATE EVENTS YET
- * - NEED TO FIND EXPRESSION LANGUAGE FOR SYMBOLIC ABSTRACTION
  */
