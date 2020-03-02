@@ -7,7 +7,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import * as ejs from 'ejs';
 import jsep from "jsep";
-import { Choreography, SequenceFlow, ExclusiveGateway, FlowNode, IntermediateCatchEvent, ConditionalEventDefinition, ChoreographyTask } from 'bpmn-moddle';
+import { Choreography, SequenceFlow, ExclusiveGateway, FlowNode, IntermediateCatchEvent, ConditionalEventDefinition, ChoreographyTask, TimerEventDefinition } from 'bpmn-moddle';
 import { is, getModel } from './helpers';
 
 // load fallback file for testing
@@ -170,7 +170,16 @@ export function translateModel(choreo: Choreography): Object {
     const event = <IntermediateCatchEvent> flowNode;
     const definition = event.eventDefinitions[0];
 
-    if (is('bpmn:ConditionalEventDefinition')(definition)) {
+    if (is('bpmn:TimerEventDefinition')(definition)) {
+      const timerDef = (<TimerEventDefinition> definition);
+      let expression;
+      if (timerDef.timeDuration) {
+        expression = 'ti - ma[f][2] >= ' + timerDef.timeDuration.body;
+      } else if (timerDef.timeDate) {
+        expression = 'ti = ' + timerDef.timeDate.body;
+      }
+      eventConditions.set(nodeMap.get(event), expression);
+    } else if (is('bpmn:ConditionalEventDefinition')(definition)) {
       const expression = (<ConditionalEventDefinition> definition).condition.body;
       eventConditions.set(
         nodeMap.get(event),
