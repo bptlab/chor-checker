@@ -23,6 +23,7 @@ const SUPPORTED_FLOW_NODES : string[] = [
   'bpmn:ChoreographyTask',
   'bpmn:ParallelGateway',
   'bpmn:ExclusiveGateway',
+  'bpmn:EventBasedGateway',
   'bpmn:StartEvent',
   'bpmn:EndEvent',
   'bpmn:IntermediateCatchEvent'
@@ -155,6 +156,8 @@ export function translateModel(choreo: Choreography): Object {
       type = 'GatewayParallel';
     } else if (is('bpmn:ExclusiveGateway')(flowNode)) {
       type = 'GatewayExclusive';
+    } else if (is('bpmn:EventBasedGateway')(flowNode)) {
+      type = 'GatewayEvent';
     } else if (is('bpmn:StartEvent')(flowNode)) {
       type = 'EventStart';
     } else if (is('bpmn:IntermediateCatchEvent')(flowNode)) {
