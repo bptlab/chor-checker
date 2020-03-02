@@ -1,12 +1,12 @@
 import { generateTLA } from './generator';
-import parse from './parser/parser';
+import parseState from './parser/parser';
 import fs from 'fs-extra';
 let child = require('child_process');
 
 const EXECUTION_FOLDER = './execution';
 const KEEP_ARTIFACTS = true;
 
-export async function checkModel(xml: string, term: string): Promise<string> {
+export async function checkModel(xml: string, term: string): Promise<Object> {
    //TODO generate better ID
   const id = new Date().getTime();
   const folder = EXECUTION_FOLDER + '/' + id;
@@ -31,7 +31,7 @@ export async function checkModel(xml: string, term: string): Promise<string> {
     } catch (error) {
       buffer = Buffer.concat([error.stdout, error.stderr]);
     }
-    const output = buffer.toString();
+    const log = buffer.toString();
 
     // clean up
     if (!KEEP_ARTIFACTS) {
@@ -48,7 +48,7 @@ export async function checkModel(xml: string, term: string): Promise<string> {
       })
 
       // log output to a file
-      fs.outputFile(folder + '/output.log', output).then(() => {
+      fs.outputFile(folder + '/output.log', log).then(() => {
         console.log(id, 'Wrote log to file');
       }).catch(error => {
         console.error(id, 'Error cleaning up', error);
@@ -56,7 +56,28 @@ export async function checkModel(xml: string, term: string): Promise<string> {
     }
 
     // output proper string
-    console.log(id, 'TLC finished', output);
-    return output;
+    console.log(id, 'TLC finished');
+
+    // parse output
+    const lines = log.split(/\r?\n/);
+
+    let trace: Object[] = [];
+    for (let i = 0; i < lines.length; i++) {
+      if (/State [1-9][0-9]*: <.*?>/.test(lines[i])) {
+        let j = i + 1;
+        while (j < lines.length && lines[j].length >= 0) {
+          j++;
+        }
+        const stateText = lines.slice(i + 1, j).join(' ');
+        const state = parseState(stateText);
+        trace.push(state);
+      }
+    }
+    console.log(id, 'Parsed output, trace steps found:', trace.length);
+
+    return {
+      lines,
+      trace
+    };
   });
 };

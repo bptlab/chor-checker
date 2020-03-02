@@ -21,7 +21,7 @@ app.post('/', (req, res, next) => {
   checkModel(model, term).then(output => {
     res.status(200);
     res.set('Content-Type', 'application/json');
-    res.send({ output });
+    res.send(output);
   }).catch(error => {
     next(error);
   });
