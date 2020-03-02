@@ -7,7 +7,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import * as ejs from 'ejs';
 import jsep from "jsep";
-import { Choreography, SequenceFlow, ExclusiveGateway, FlowNode, IntermediateCatchEvent, ConditionalEventDefinition } from 'bpmn-moddle';
+import { Choreography, SequenceFlow, ExclusiveGateway, FlowNode, IntermediateCatchEvent, ConditionalEventDefinition, ChoreographyTask } from 'bpmn-moddle';
 import { is, getModel } from './helpers';
 
 // load fallback file for testing
@@ -38,20 +38,24 @@ export function translateModel(choreo: Choreography): Object {
   // collect relevant elements
   let nodes: FlowNode[] = <FlowNode[]> choreo.flowElements.filter(is(...SUPPORTED_FLOW_NODES));
   let flows: SequenceFlow[] = <SequenceFlow[]> choreo.flowElements.filter(is('bpmn:SequenceFlow'));
+  let tasks = <ChoreographyTask[]> nodes.filter(is('bpmn:ChoreographyTask'));
 
   // assign more readable IDs
-  let nodeIDs: Map<FlowNode, string> = new Map();
-  let flowIDs: Map<SequenceFlow, string> = new Map();
-  nodes.forEach((flowNode, index) => {
-    // nodeIDs.set(flowNode, 'N' + index);
-    nodeIDs.set(flowNode, flowNode.id);
+  let nodeMap: Map<FlowNode, string> = new Map();
+  let flowMap: Map<SequenceFlow, string> = new Map();
+  nodes.forEach(flowNode => {
+    nodeMap.set(flowNode, flowNode.id);
   });
-  flows.forEach((sequenceFlow, index) => {
-    // flowIDs.set(sequenceFlow, 'F' + index);
-    flowIDs.set(sequenceFlow, sequenceFlow.id);
+  flows.forEach(sequenceFlow => {
+    flowMap.set(sequenceFlow, sequenceFlow.id);
   });
 
   // build up structures we need for the template
+  // we do not want to do much processing in the template, so this includes
+  // some rather basic transformations
+  let taskIDs: string[] = [];
+  let otherIDs: string[] = [];
+  let flowIDs: string[] = [];
   let source: Map<string, string> = new Map();
   let target: Map<string, string> = new Map();
   let nodeType: Map<string, string> = new Map();
@@ -59,6 +63,47 @@ export function translateModel(choreo: Choreography): Object {
   let flowConditions: Map<string, string> = new Map();
   let eventConditions: Map<string, string> = new Map();
   let oracles: Array<object> = [];
+  let messageDomains: Map<string, Array<number>> = new Map();
+
+  // IDs
+  nodes.forEach(node => {
+    if (is('bpmn:ChoreographyTask')(node)) {
+      taskIDs.push(nodeMap.get(node));
+    } else {
+      otherIDs.push(nodeMap.get(node));
+    };
+  })
+  flows.forEach(flow => {
+    flowIDs.push(flowMap.get(flow));
+  })
+
+  // determine message domains
+  // we assume each task is assigned to exactly one message
+  let messageToTask: Map<string, string> = new Map();
+  tasks.forEach(task => {
+    let domain;
+    const message = task.messageFlowRef[0].messageRef;
+    if (message) {
+      const itemDefinition = message.itemRef;
+      if (itemDefinition) {
+        try {
+          domain = JSON.parse(itemDefinition.structureRef);
+        } catch (error) {
+          // just use the default domain
+          console.warn('Could not parse ItemDefinition', message, itemDefinition);
+        }
+      }
+
+      // also calculate the mapping from message name to task ID
+      if (message.name) {
+        messageToTask.set(message.name, nodeMap.get(task));
+      }
+    }
+    if (!domain) {
+      domain = [ 0 ];
+    }
+    messageDomains.set(nodeMap.get(task), domain);
+  })
 
   // check if we have oracles involved
   if (choreo.documentation) {
@@ -70,8 +115,8 @@ export function translateModel(choreo: Choreography): Object {
 
   // build source/target relation
   flows.forEach(sequenceFlow => {
-    source.set(flowIDs.get(sequenceFlow), nodeIDs.get(sequenceFlow.sourceRef));
-    target.set(flowIDs.get(sequenceFlow), nodeIDs.get(sequenceFlow.targetRef));
+    source.set(flowMap.get(sequenceFlow), nodeMap.get(sequenceFlow.sourceRef));
+    target.set(flowMap.get(sequenceFlow), nodeMap.get(sequenceFlow.targetRef));
   });
   
   // build default flow relation and node types
@@ -83,8 +128,8 @@ export function translateModel(choreo: Choreography): Object {
       exclusiveGateway.outgoing.forEach(outgoing => {
         if (outgoing.conditionExpression && outgoing.conditionExpression.body) {
           flowConditions.set(
-            flowIDs.get(outgoing),
-            transpileExpression(outgoing.conditionExpression.body, oracles, undefined) // TODO add messages
+            flowMap.get(outgoing),
+            transpileExpression(outgoing.conditionExpression.body, oracles, messageToTask)
           );
         }
       });
@@ -100,7 +145,7 @@ export function translateModel(choreo: Choreography): Object {
         // property of the choreography
         flow = exclusiveGateway.outgoing[0];
       }
-      defaultFlow.set(nodeIDs.get(exclusiveGateway), flowIDs.get(flow));
+      defaultFlow.set(nodeMap.get(exclusiveGateway), flowMap.get(flow));
     }
 
     let type = '';
@@ -117,7 +162,7 @@ export function translateModel(choreo: Choreography): Object {
     } else if (is('bpmn:EndEvent')(flowNode)) {
       type = 'EventEnd';
     }
-    nodeType.set(nodeIDs.get(flowNode), type);
+    nodeType.set(nodeMap.get(flowNode), type);
   });
 
   // translate intermediate catch events
@@ -128,15 +173,16 @@ export function translateModel(choreo: Choreography): Object {
     if (is('bpmn:ConditionalEventDefinition')(definition)) {
       const expression = (<ConditionalEventDefinition> definition).condition.body;
       eventConditions.set(
-        nodeIDs.get(event),
-        transpileExpression(expression, oracles, undefined) // TODO add messages
+        nodeMap.get(event),
+        transpileExpression(expression, oracles, messageToTask)
       );
     }
   });
 
   // put all that stuff into the template
   return {
-    nodeIDs,
+    taskIDs,
+    otherIDs,
     flowIDs,
     source,
     target,
@@ -144,15 +190,16 @@ export function translateModel(choreo: Choreography): Object {
     defaultFlow,
     flowConditions,
     eventConditions,
-    oracles
+    oracles,
+    messageDomains
   };
 }
 
-function transpileExpression(expr: string, oracles, messages): string {
-  return walkExpression(jsep(expr), oracles, messages);
+function transpileExpression(expr: string, oracles: Array<object>, messageToTask: Map<string, string>): string {
+  return walkExpression(jsep(expr), oracles, messageToTask);
 }
 
-function walkExpression(expr: jsep.Expression, oracles, messages): string {
+function walkExpression(expr: jsep.Expression, oracles: Array<any>, messageToTask: Map<string, string>): string {
   let output: string;
   let operator: string;
   switch (expr.type) {
@@ -172,9 +219,9 @@ function walkExpression(expr: jsep.Expression, oracles, messages): string {
         default:
           throw 'unexpected operator in binary expression: ' + operator;
       }
-      output = walkExpression(binaryExpr.left, oracles, messages)
+      output = walkExpression(binaryExpr.left, oracles, messageToTask)
         + operator
-        + walkExpression(binaryExpr.right, oracles, messages);
+        + walkExpression(binaryExpr.right, oracles, messageToTask);
       break;
 
     case 'LogicalExpression':
@@ -190,16 +237,16 @@ function walkExpression(expr: jsep.Expression, oracles, messages): string {
         default:
           throw 'unexpected operator in logical expression: ' + operator;
       }
-      output = walkExpression(logicalExpr.left, oracles, messages)
+      output = walkExpression(logicalExpr.left, oracles, messageToTask)
         + operator
-        + walkExpression(logicalExpr.right, oracles, messages);
+        + walkExpression(logicalExpr.right, oracles, messageToTask);
       break;
 
     case 'UnaryExpression':
       const unaryExpr = <jsep.UnaryExpression> expr;
       switch (unaryExpr.operator) {
         case '!':
-          output = '~' + walkExpression(unaryExpr.argument, oracles, messages);
+          output = '~' + walkExpression(unaryExpr.argument, oracles, messageToTask);
           break;
         default:
           throw 'unexpected operator in unary expression ' + unaryExpr.operator;
@@ -211,6 +258,8 @@ function walkExpression(expr: jsep.Expression, oracles, messages): string {
       const identifier = <jsep.Identifier> expr;
       if (oracles.find(oracle => oracle.name == identifier.name)) {
         return 'or["' + identifier.name + '"]';
+      } else if (messageToTask.has(identifier.name)) {
+        return 'me["' + messageToTask.get(identifier.name) + '"]';
       }
       throw 'unexpected identifier, neither oracle nor message: ' + identifier.name;
 

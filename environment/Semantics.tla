@@ -77,7 +77,7 @@ startChoreoTx ==
                           IF f = fi THEN <<FALSE, timestamp>>
                           ELSE IF f \in outgoing(t) THEN <<TRUE, timestamp>>
                           ELSE marking[f] ]
-      /\ \E mv \in MessageDomain :
+      /\ \E mv \in MessageDomain[t] :
         /\ curTx' = <<ChoreoTx, timestamp, mv>>
         /\ messageValues' = [ messageValues EXCEPT ![t] = mv ]
       /\ UNCHANGED <<oracleValues, timestamp>>
@@ -110,7 +110,7 @@ Init ==
                      IF nodeType[source[f]] = EventStart THEN <<TRUE, 0>>
                      ELSE <<FALSE, 0>> ]
   /\ oracleValues \in { ov \in [ Oracles -> AllOracleDomains ] : \A o \in Oracles : ov[o] \in OracleDomain[o] }
-  /\ messageValues = [ n \in Tasks |-> 0 ]
+  /\ messageValues \in { mv \in [ Tasks -> AllMessageDomains ] : \A t \in Tasks : mv[t] \in MessageDomain[t] }
   /\ timestamp = 0
   /\ curTx = <<NoTx, 0, NoPayload>>
 
@@ -120,7 +120,8 @@ TypeInvariant ==
   /\ marking \in [ Flows -> BOOLEAN \X Nat ]
   /\ oracleValues \in [ Oracles -> AllOracleDomains ]
   /\ \A o \in Oracles : oracleValues[o] \in OracleDomain[o]
-  /\ messageValues \in [ Tasks -> MessageDomain ]
+  /\ messageValues \in [ Tasks -> AllMessageDomains ]
+  /\ \A t \in Tasks : messageValues[t] \in MessageDomain[t]
   /\ timestamp \in Nat
   /\ curTx \in TxType \X Nat \X PayloadDomain \* restrict payloads to allowed ones for each oracle/choreo call *\
 

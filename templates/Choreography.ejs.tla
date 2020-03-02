@@ -24,11 +24,16 @@ VARIABLES marking, timestamp, oracleValues, messageValues, curTx
 
 PUSH_ORACLES == TRUE
 
-Nodes == {
-  <%- Array.from(nodeIDs.values()).map(bracketize).join(', ') %>
+Tasks == {
+  <%- taskIDs.map(bracketize).join(', ') %>
 }
+
+Nodes == {
+  <%- otherIDs.map(bracketize).join(', ') %>
+} \union Tasks
+
 Flows == {
-  <%- Array.from(flowIDs.values()).map(bracketize).join(', ') %>
+  <%- flowIDs.map(bracketize).join(', ') %>
 }
 
 source ==
@@ -54,9 +59,11 @@ OracleDomain ==
   <%- oracles.map(o => [bracketize(o.name), '{' + o.values.join(', ') + '}'].join(' :> ')).join(' @@ ') %>
 AllOracleDomains == UNION { OracleDomain[o] : o \in DOMAIN OracleDomain }
 
-MessageDomain == { 0, 100 }
+MessageDomain ==
+  <%- Array.from(messageDomains.entries()).map(m => [bracketize(m[0]), '{' + m[1].join(', ') + '}'].join(' :> ')).join(' @@ ') %>
+AllMessageDomains == UNION { MessageDomain[m] : m \in DOMAIN MessageDomain }
 
-PayloadDomain == { NoPayload } \union MessageDomain \union AllOracleDomains
+PayloadDomain == { NoPayload } \union AllMessageDomains \union AllOracleDomains
 
 (* For these conditions, we can not use the variables directly. We have
    to get them as parameters. *)
