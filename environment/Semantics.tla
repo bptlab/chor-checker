@@ -67,7 +67,7 @@ propagateFlow ==
 (* end transactions *)
 endTx ==
   /\ UNCHANGED <<marking, oracleValues, messageValues>>
-  /\ curTx' = <<timestamp, Empty, Empty, Empty>>
+  /\ curTx' = <<timestamp, Empty, Empty, NoPayload>>
 
 (* start transactions *)
 doStartTaskTx(t, reset) ==
@@ -162,7 +162,7 @@ TypeInvariant ==
 
 (* properties *)
 Safety ==
-  \* [](\E f \in Flows : marking[f][1])
-  []((marking["SequenceFlow_0h2xn01"][1] /\ oracleValues["WEATHER"]=2) ~> marking["SequenceFlow_0z9kgu5"][1])
+  [](\E f \in Flows : marking[f][1])
+  \*[]((marking["SequenceFlow_0h2xn01"][1] /\ oracleValues["WEATHER"]=2) ~> marking["SequenceFlow_0z9kgu5"][1])
 
 ================================================================
