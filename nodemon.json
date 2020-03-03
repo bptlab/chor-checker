@@ -1,5 +1,5 @@
 {
-  "watch": ["src", "templates"],
+  "watch": ["src", "templates", "environment"],
   "ext": "ts,tla,cfg",
   "ignore": ["src/**/*.spec.ts"],
   "exec": "npm run build && npm run serve"

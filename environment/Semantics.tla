@@ -67,25 +67,25 @@ propagateFlow ==
 (* end transactions *)
 endTx ==
   /\ UNCHANGED <<marking, oracleValues, messageValues>>
-  /\ curTx' = <<NoTx, timestamp, NoPayload>>
+  /\ curTx' = <<timestamp, Empty, Empty, Empty>>
 
 (* start transactions *)
-doStartChoreoTx(t, reset) ==
+doStartTaskTx(t, reset) ==
   /\ marking' = [ f \in DOMAIN marking |->
                       IF f \in reset THEN <<FALSE, timestamp>>
                       ELSE IF f \in outgoing(t) THEN <<TRUE, timestamp>>
                       ELSE marking[f] ]
   /\ \E mv \in MessageDomain[t] :
-    /\ curTx' = <<ChoreoTx, timestamp, mv>>
+    /\ curTx' = <<timestamp, TaskTx, t, mv>>
     /\ messageValues' = [ messageValues EXCEPT ![t] = mv ]
   /\ UNCHANGED <<oracleValues, timestamp>>
 
-startChoreoTx ==
+startTaskTx ==
   \E t \in Tasks :
     \* direct enablement - _fi_ (_t_)
     \/ \E fi \in incoming(t) :
       /\ marking[fi][1]
-      /\ doStartChoreoTx(t, {fi})
+      /\ doStartTaskTx(t, {fi})
     \* indirect enablement - _fii_ (g) fi (_t_ | e...)
     \/ \E fi \in incoming(t) :
       /\ nodeType[source[fi]] = GatewayEvent
@@ -95,14 +95,14 @@ startChoreoTx ==
           /\ fi /= fi2
           /\ target[fi2] = EventIntermediate
           /\ evaluateIntermediateEvent(target[fi2], fii, marking, timestamp, oracleValues, messageValues)
-        /\ doStartChoreoTx(t, {fi, fii})
+        /\ doStartTaskTx(t, {fi, fii})
     \* conditional enablement - _fii_ (e) fi (_t_)
     \/ \E fi \in incoming(t) :
       /\ nodeType[source[fi]] = EventIntermediate
       /\ \E fii \in incoming(source[fi]) :
         /\ marking[fii][1]
         /\ evaluateIntermediateEvent(source[fi], fii, marking, timestamp, oracleValues, messageValues)
-        /\ doStartChoreoTx(t, {fi, fii})
+        /\ doStartTaskTx(t, {fi, fii})
     \* conditional indirect enablement - _fiii_ (g) fii (e...) fi (_t_)
     \/ \E fi \in incoming(t) :
       /\ nodeType[source[fi]] = EventIntermediate
@@ -112,12 +112,12 @@ startChoreoTx ==
           /\ marking[fiii][1]
           /\ evaluateIntermediateEvent(source[fi], fiii, marking, timestamp, oracleValues, messageValues)
           (* TODO AND NO EARLIER ENABLED *)
-          /\ doStartChoreoTx(t, {fi, fii, fiii})
+          /\ doStartTaskTx(t, {fi, fii, fiii})
 
 startOracleTx ==
   \E o \in Oracles : \E v \in OracleDomain[o] :
     /\ oracleValues' = [ oracleValues EXCEPT ![o] = v ]
-    /\ curTx' = <<OracleTx, timestamp, v>>
+    /\ curTx' = <<timestamp, OracleTx, o, v>>
   /\ UNCHANGED <<marking, messageValues, timestamp>>
 
 (* timestep processing *)
@@ -127,13 +127,13 @@ timestep ==
 
 (* transition system *)
 Next ==
-  IF curTx[1] = NoTx THEN
-    \/ startChoreoTx
+  IF curTx[2] = Empty THEN
+    \/ startTaskTx
     \/ startOracleTx
     \/ timestep
   ELSE
     /\ UNCHANGED timestamp
-    /\ IF PUSH_ORACLES \/ curTx[1] = ChoreoTx
+    /\ IF PUSH_ORACLES \/ curTx[2] = TaskTx
        THEN propagateFlow \/ endTx
        ELSE endTx
 
@@ -144,7 +144,7 @@ Init ==
   /\ oracleValues \in { ov \in [ Oracles -> AllOracleDomains ] : \A o \in Oracles : ov[o] \in OracleDomain[o] }
   /\ messageValues \in { mv \in [ Tasks -> AllMessageDomains ] : \A t \in Tasks : mv[t] \in MessageDomain[t] }
   /\ timestamp = 0
-  /\ curTx = <<NoTx, 0, NoPayload>>
+  /\ curTx = <<0, Empty, Empty, NoPayload>>
 
 Spec == Init /\ [][Next]_var
 
@@ -155,11 +155,14 @@ TypeInvariant ==
   /\ messageValues \in [ Tasks -> AllMessageDomains ]
   /\ \A t \in Tasks : messageValues[t] \in MessageDomain[t]
   /\ timestamp \in Nat
-  /\ curTx \in TxType \X Nat \X PayloadDomain \* restrict payloads to allowed ones for each oracle/choreo call *\
+  /\ curTx \in Nat                                     (* timestamp *)
+            \X TxType                                  (* transaction type *)
+            \X (Tasks \union Oracles \union { Empty }) (* transaction target *)
+            \X PayloadDomain                           (* payload *)
 
 (* properties *)
 Safety ==
-\*  [](\E f \in Flows : marking[f][1])
-  [](~marking["SequenceFlow_0z9kgu5"][1])
+  \* [](\E f \in Flows : marking[f][1])
+  []((marking["SequenceFlow_0h2xn01"][1] /\ oracleValues["WEATHER"]=2) ~> marking["SequenceFlow_0z9kgu5"][1])
 
 ================================================================

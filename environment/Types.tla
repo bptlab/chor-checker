@@ -19,13 +19,13 @@ FlowType == { FlowNormal, FlowConditional, FlowDefault }
 
 NodeType == { Task } \union GatewayType \union EventType
 
+Empty == "-"
+NoPayload == 0
+
 (* transaction types *)
-NoTx == "NoTx"
-ChoreoTx == "ChoreoTx"
+TaskTx == "TaskTx"
 OracleTx == "OracleTx"
 
-TxType == { NoTx, ChoreoTx, OracleTx }
-
-NoPayload == 0
+TxType == { Empty, TaskTx, OracleTx }
 
 ================================================================
