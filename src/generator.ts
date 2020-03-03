@@ -269,7 +269,7 @@ function walkExpression(expr: jsep.Expression, oracles: Array<any>, messageToTas
       // lookup oracles
       const identifier = <jsep.Identifier> expr;
       if (oracles.find(oracle => oracle.name == identifier.name)) {
-        return 'or["' + identifier.name + '"][1]';
+        return 'or["' + identifier.name + '"]';
       } else if (messageToTask.has(identifier.name)) {
         return 'me["' + messageToTask.get(identifier.name) + '"]';
       }
