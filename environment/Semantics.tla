@@ -116,7 +116,7 @@ startTaskTx ==
 
 startOracleTx ==
   \E o \in Oracles : \E v \in OracleDomain[o] :
-    /\ oracleValues' = [ oracleValues EXCEPT ![o] = v ]
+    /\ oracleValues' = [ oracleValues EXCEPT ![o] = <<v, timestamp>> ]
     /\ curTx' = <<timestamp, OracleTx, o, v>>
   /\ UNCHANGED <<marking, messageValues, timestamp>>
 
@@ -141,7 +141,7 @@ Init ==
   /\ marking = [ f \in Flows |->
                      IF nodeType[source[f]] = EventStart THEN <<TRUE, 0>>
                      ELSE <<FALSE, 0>> ]
-  /\ oracleValues \in { ov \in [ Oracles -> AllOracleDomains ] : \A o \in Oracles : ov[o] \in OracleDomain[o] }
+  /\ oracleValues \in { ov \in [ Oracles -> AllOracleDomains \X {0} ] : \A o \in Oracles : ov[o][1] \in OracleDomain[o] }
   /\ messageValues \in { mv \in [ Tasks -> AllMessageDomains ] : \A t \in Tasks : mv[t] \in MessageDomain[t] }
   /\ timestamp = 0
   /\ curTx = <<0, Empty, Empty, NoPayload>>
@@ -150,8 +150,8 @@ Spec == Init /\ [][Next]_var
 
 TypeInvariant ==
   /\ marking \in [ Flows -> BOOLEAN \X Nat ]
-  /\ oracleValues \in [ Oracles -> AllOracleDomains ]
-  /\ \A o \in Oracles : oracleValues[o] \in OracleDomain[o]
+  /\ oracleValues \in [ Oracles -> AllOracleDomains \X Nat ]
+  /\ \A o \in Oracles : oracleValues[o][1] \in OracleDomain[o]
   /\ messageValues \in [ Tasks -> AllMessageDomains ]
   /\ \A t \in Tasks : messageValues[t] \in MessageDomain[t]
   /\ timestamp \in Nat
@@ -163,6 +163,6 @@ TypeInvariant ==
 (* properties *)
 Safety ==
   \* [](\E f \in Flows : marking[f][1])
-  []((marking["SequenceFlow_0h2xn01"][1] /\ oracleValues["WEATHER"]=2) ~> marking["SequenceFlow_0z9kgu5"][1])
+  []((marking["SequenceFlow_0h2xn01"][1] /\ oracleValues["WEATHER"][1]=2) ~> marking["SequenceFlow_0z9kgu5"][1])
 
 ================================================================
