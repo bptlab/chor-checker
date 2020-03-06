@@ -162,7 +162,8 @@ TypeInvariant ==
 
 (* properties *)
 Safety ==
-  [](\E f \in Flows : marking[f][1])
+  \*[](\E f \in Flows : marking[f][1])
+  [](~marking["SequenceFlow_0ta35t3"][1])
   \*[]((marking["SequenceFlow_0h2xn01"][1] /\ oracleValues["WEATHER"]=2) ~> marking["SequenceFlow_0z9kgu5"][1])
 
 ================================================================
