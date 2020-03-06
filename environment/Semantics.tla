@@ -142,7 +142,7 @@ Init ==
                      IF nodeType[source[f]] = EventStart THEN <<TRUE, 0>>
                      ELSE <<FALSE, 0>> ]
   /\ oracleValues \in { ov \in [ Oracles -> AllOracleDomains ] : \A o \in Oracles : ov[o] \in OracleDomain[o] }
-  /\ messageValues \in { mv \in [ Tasks -> AllMessageDomains ] : \A t \in Tasks : mv[t] \in MessageDomain[t] }
+  /\ messageValues \in { mv \in [ Tasks -> AllMessageDomains ] : \A t \in Tasks : mv[t] = NoPayload }
   /\ timestamp = 0
   /\ curTx = <<0, Empty, Empty, NoPayload>>
 
@@ -153,7 +153,7 @@ TypeInvariant ==
   /\ oracleValues \in [ Oracles -> AllOracleDomains ]
   /\ \A o \in Oracles : oracleValues[o] \in OracleDomain[o]
   /\ messageValues \in [ Tasks -> AllMessageDomains ]
-  /\ \A t \in Tasks : messageValues[t] \in MessageDomain[t]
+  /\ \A t \in Tasks : messageValues[t] \in { NoPayload } \union MessageDomain[t]
   /\ timestamp \in Nat
   /\ curTx \in Nat                                     (* timestamp *)
             \X TxType                                  (* transaction type *)

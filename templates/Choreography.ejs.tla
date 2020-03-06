@@ -67,7 +67,7 @@ AllOracleDomains == UNION { OracleDomain[o] : o \in DOMAIN OracleDomain }
 
 MessageDomain ==
   <%- Array.from(messageDomains.entries()).map(m => [bracketize(m[0]), '{' + m[1].join(', ') + '}'].join(' :> ')).join(' @@ ') %>
-AllMessageDomains == UNION { MessageDomain[m] : m \in DOMAIN MessageDomain }
+AllMessageDomains == { NoPayload } \union UNION { MessageDomain[m] : m \in DOMAIN MessageDomain }
 
 PayloadDomain == { NoPayload } \union AllMessageDomains \union AllOracleDomains
 
