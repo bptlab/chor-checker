@@ -101,7 +101,7 @@ export function translateModel(choreo: Choreography, property: string): Object {
       domain = [ 0 ];
     }
     messageDomains.set(nodeMap.get(task), domain);
-  })
+  });
 
   // check if we have oracles involved
   if (choreo.documentation) {
@@ -112,32 +112,47 @@ export function translateModel(choreo: Choreography, property: string): Object {
   }
 
   // define the substitutions for expressions
-  const literalSubstitution = literal => {
-    // oracle values
-    if (oracles.find(oracle => oracle.name == literal)) {
-      return 'or["' + literal + '"]';
-    };
-
-    // message values
-    const task = tasks.find(task => {
-      const messageFlow = task.messageFlowRef.find(messageFlow => messageFlow.sourceRef == task.initiatingParticipantRef);
-      if (messageFlow) {
-        const message = messageFlow.messageRef;
-        if (message && message.name) {
-          if (message.name == literal) {
-            return true;
+  //TODO replace with proper architecture pattern instead of these nested lambdas
+  const literalSubstitution = (short: Boolean = true) => {
+    return literal => {
+      // oracle values
+      if (oracles.find(oracle => oracle.name == literal)) {
+        if (short) {
+          return 'or["' + literal + '"]';
+        } else {
+          return 'oracleValues["' + literal + '"]';
+        }
+      };
+  
+      // message values
+      const task = tasks.find(task => {
+        const messageFlow = task.messageFlowRef.find(messageFlow => messageFlow.sourceRef == task.initiatingParticipantRef);
+        if (messageFlow) {
+          const message = messageFlow.messageRef;
+          if (message && message.name) {
+            if (message.name == literal) {
+              return true;
+            }
           }
         }
+      });
+      if (task) {
+        if (short) {
+          return 'me["' + nodeMap.get(task) + '"]';
+        } else {
+          return 'messageValues["' + nodeMap.get(task) + '"]';
+        }
       }
-    });
-    if (task) {
-      return 'me["' + nodeMap.get(task) + '"]';
-    }
-
-    // sequence flow markings
-    const flow = flows.find(flow => flow.name == literal);
-    if (flow) {
-      return 'ma["' + flowMap.get(flow) + '"][1]';
+  
+      // sequence flow markings
+      const flow = flows.find(flow => flow.name == literal);
+      if (flow) {
+        if (short) {
+          return 'ma["' + flowMap.get(flow) + '"][1]';
+        } else {
+          return 'marking["' + flowMap.get(flow) + '"][1]';
+        }
+      }
     }
   }
 
@@ -157,7 +172,7 @@ export function translateModel(choreo: Choreography, property: string): Object {
         if (outgoing.conditionExpression && outgoing.conditionExpression.body) {
           flowConditions.set(
             flowMap.get(outgoing),
-            transpileExpression(outgoing.conditionExpression.body, literalSubstitution)
+            transpileExpression(outgoing.conditionExpression.body, literalSubstitution())
           );
         }
       });
@@ -213,14 +228,14 @@ export function translateModel(choreo: Choreography, property: string): Object {
       const expression = (<ConditionalEventDefinition> definition).condition.body;
       eventConditions.set(
         nodeMap.get(event),
-        transpileExpression(expression, literalSubstitution)
+        transpileExpression(expression, literalSubstitution())
       );
     }
   });
 
   // put all that stuff into the template
   return {
-    property: transpileExpression(property, literalSubstitution),
+    property: transpileExpression(property, literalSubstitution(false)),
     taskIDs,
     otherIDs,
     flowIDs,

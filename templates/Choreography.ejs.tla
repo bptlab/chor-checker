@@ -93,6 +93,6 @@ evaluateFlow(f, or, me) ==
 
 INSTANCE Semantics
 
-CheckProperty == [](~marking["SequenceFlow_0ta35t3"][1]) \*LET ma == marking ov == oracleValues me == messageValues IN <%- property %>
+CheckProperty == <%- property %>
 
 ================================================================
