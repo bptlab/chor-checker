@@ -6,9 +6,9 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import * as ejs from 'ejs';
-import jsep from "jsep";
 import { Choreography, SequenceFlow, ExclusiveGateway, FlowNode, IntermediateCatchEvent, ConditionalEventDefinition, ChoreographyTask, TimerEventDefinition } from 'bpmn-moddle';
 import { is, getModel } from './helpers';
+import transpileExpression from './parser/expression';
 
 // load fallback file for testing
 const order = fs.readFileSync(path.join(__dirname, '/../assets/order.bpmn'), 'utf-8');
@@ -63,7 +63,7 @@ export function translateModel(choreo: Choreography): Object {
   let defaultFlow: Map<string, string> = new Map();
   let flowConditions: Map<string, string> = new Map();
   let eventConditions: Map<string, string> = new Map();
-  let oracles: Array<object> = [];
+  let oracles: Array<any> = [];
   let messageDomains: Map<string, Array<number>> = new Map();
 
   // IDs
@@ -114,6 +114,36 @@ export function translateModel(choreo: Choreography): Object {
     }
   }
 
+  // define the substitutions for expressions
+  const literalSubstitution = literal => {
+    // oracle values
+    if (oracles.find(oracle => oracle.name == literal)) {
+      return 'or["' + literal + '"]';
+    };
+
+    // message values
+    const task = tasks.find(task => {
+      const messageFlow = task.messageFlowRef.find(messageFlow => messageFlow.sourceRef == task.initiatingParticipantRef);
+      if (messageFlow) {
+        const message = messageFlow.messageRef;
+        if (message && message.name) {
+          if (message.name == literal) {
+            return true;
+          }
+        }
+      }
+    });
+    if (task) {
+      return 'me["' + nodeMap.get(task) + '"]';
+    }
+
+    // sequence flow markings
+    const flow = flows.find(flow => flow.name == literal);
+    if (flow) {
+      return 'ma["' + flowMap.get(flow) + '"][0]';
+    }
+  }
+
   // build source/target relation
   flows.forEach(sequenceFlow => {
     source.set(flowMap.get(sequenceFlow), nodeMap.get(sequenceFlow.sourceRef));
@@ -130,7 +160,7 @@ export function translateModel(choreo: Choreography): Object {
         if (outgoing.conditionExpression && outgoing.conditionExpression.body) {
           flowConditions.set(
             flowMap.get(outgoing),
-            transpileExpression(outgoing.conditionExpression.body, oracles, messageToTask)
+            transpileExpression(outgoing.conditionExpression.body, literalSubstitution)
           );
         }
       });
@@ -186,7 +216,7 @@ export function translateModel(choreo: Choreography): Object {
       const expression = (<ConditionalEventDefinition> definition).condition.body;
       eventConditions.set(
         nodeMap.get(event),
-        transpileExpression(expression, oracles, messageToTask)
+        transpileExpression(expression, literalSubstitution)
       );
     }
   });
@@ -205,83 +235,4 @@ export function translateModel(choreo: Choreography): Object {
     oracles,
     messageDomains
   };
-}
-
-function transpileExpression(expr: string, oracles: Array<object>, messageToTask: Map<string, string>): string {
-  return walkExpression(jsep(expr), oracles, messageToTask);
-}
-
-function walkExpression(expr: jsep.Expression, oracles: Array<any>, messageToTask: Map<string, string>): string {
-  let output: string;
-  let operator: string;
-  switch (expr.type) {
-    case 'BinaryExpression':
-      const binaryExpr = <jsep.BinaryExpression> expr;
-      operator = binaryExpr.operator;
-      switch (binaryExpr.operator) {
-        case '==':
-          operator = '=';
-          break;
-        case '+':
-        case '-':
-        case '*':
-        case '/':
-          operator = binaryExpr.operator;
-          break;
-        default:
-          throw 'unexpected operator in binary expression: ' + operator;
-      }
-      output = walkExpression(binaryExpr.left, oracles, messageToTask)
-        + operator
-        + walkExpression(binaryExpr.right, oracles, messageToTask);
-      break;
-
-    case 'LogicalExpression':
-      const logicalExpr = <jsep.LogicalExpression> expr;
-      operator = logicalExpr.operator;
-      switch (logicalExpr.operator) {
-        case '||':
-          operator = '\\/';
-          break;
-        case '&&':
-          operator = '/\\';
-          break;
-        default:
-          throw 'unexpected operator in logical expression: ' + operator;
-      }
-      output = walkExpression(logicalExpr.left, oracles, messageToTask)
-        + operator
-        + walkExpression(logicalExpr.right, oracles, messageToTask);
-      break;
-
-    case 'UnaryExpression':
-      const unaryExpr = <jsep.UnaryExpression> expr;
-      switch (unaryExpr.operator) {
-        case '!':
-          output = '~' + walkExpression(unaryExpr.argument, oracles, messageToTask);
-          break;
-        default:
-          throw 'unexpected operator in unary expression ' + unaryExpr.operator;
-      }
-      break;
-
-    case 'Identifier':
-      // lookup oracles
-      const identifier = <jsep.Identifier> expr;
-      if (oracles.find(oracle => oracle.name == identifier.name)) {
-        return 'or["' + identifier.name + '"]';
-      } else if (messageToTask.has(identifier.name)) {
-        return 'me["' + messageToTask.get(identifier.name) + '"]';
-      }
-      throw 'unexpected identifier, neither oracle nor message: ' + identifier.name;
-
-    case 'Literal':
-      return (<jsep.Literal> expr).raw;
-
-    default:
-      throw 'unexpected expression: ' + expr;
-  }
-
-  // enforce full bracketization for non-identifiers or non-literals
-  return '(' + output + ')';
 }
