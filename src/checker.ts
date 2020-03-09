@@ -6,7 +6,7 @@ let child = require('child_process');
 const EXECUTION_FOLDER = './execution';
 const KEEP_ARTIFACTS = true;
 
-export async function checkModel(xml: string, term: string): Promise<Object> {
+export async function checkModel(xml: string, property: string): Promise<Object> {
    //TODO generate better ID
   const id = new Date().getTime();
   const folder = EXECUTION_FOLDER + '/' + id;
@@ -17,7 +17,7 @@ export async function checkModel(xml: string, term: string): Promise<Object> {
     return fs.copy('./environment', folder);
   }).then(() => {
     console.log(id, 'Copied execution files');
-    return generateTLA(xml);
+    return generateTLA(xml, property);
   }).then(tla => {
     console.log(id, 'Generated TLA');
     return fs.outputFile(folder + '/Choreography.tla', tla);

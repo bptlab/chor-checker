@@ -10,9 +10,6 @@ import { Choreography, SequenceFlow, ExclusiveGateway, FlowNode, IntermediateCat
 import { is, getModel } from './helpers';
 import transpileExpression from './parser/expression';
 
-// load fallback file for testing
-const order = fs.readFileSync(path.join(__dirname, '/../assets/order.bpmn'), 'utf-8');
-
 // prepare the TLA template
 const template = ejs.compile(
   fs.readFileSync(path.join(__dirname, '/../templates/Choreography.ejs.tla'), 'utf-8')
@@ -29,13 +26,13 @@ const SUPPORTED_FLOW_NODES : string[] = [
   'bpmn:IntermediateCatchEvent'
 ];
 
-export function generateTLA(xml: string = order): Promise<string> {
+export function generateTLA(xml: string, property: string): Promise<string> {
   return getModel(xml).then(choreo => {
-    return template(translateModel(choreo));
+    return template(translateModel(choreo, property));
   });
 }
 
-export function translateModel(choreo: Choreography): Object {
+export function translateModel(choreo: Choreography, property: string): Object {
   // collect relevant elements
   let nodes: FlowNode[] = <FlowNode[]> choreo.flowElements.filter(is(...SUPPORTED_FLOW_NODES));
   let flows: SequenceFlow[] = <SequenceFlow[]> choreo.flowElements.filter(is('bpmn:SequenceFlow'));
@@ -140,7 +137,7 @@ export function translateModel(choreo: Choreography): Object {
     // sequence flow markings
     const flow = flows.find(flow => flow.name == literal);
     if (flow) {
-      return 'ma["' + flowMap.get(flow) + '"][0]';
+      return 'ma["' + flowMap.get(flow) + '"][1]';
     }
   }
 
@@ -223,6 +220,7 @@ export function translateModel(choreo: Choreography): Object {
 
   // put all that stuff into the template
   return {
+    property: transpileExpression(property, literalSubstitution),
     taskIDs,
     otherIDs,
     flowIDs,

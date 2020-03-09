@@ -17,8 +17,8 @@ app.listen(3000, () => console.log('Listening on port 3000!'));
 // entrypoint for model checking
 app.post('/', (req, res, next) => {
   let model = req.body && req.body.diagram;
-  let term = req.body && req.body.term;
-  checkModel(model, term).then(output => {
+  let property = req.body && req.body.property;
+  checkModel(model, property).then(output => {
     res.status(200);
     res.set('Content-Type', 'application/json');
     res.send(output);
@@ -29,17 +29,8 @@ app.post('/', (req, res, next) => {
 
 app.post('/convert', (req, res, next) => {
   const model = req.body && req.body.diagram;
-  return generateTLA(model).then(tla => {
-    res.status(200);
-    res.set('Content-Type', 'application/json');
-    res.send({ tla });
-  }).catch(error => {
-    next(error);
-  });
-});
-
-app.get('/convert', (req, res, next) => {
-  return generateTLA().then(tla => {
+  const property = req.body && req.body.property;
+  return generateTLA(model, property).then(tla => {
     res.status(200);
     res.set('Content-Type', 'application/json');
     res.send({ tla });

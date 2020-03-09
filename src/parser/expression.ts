@@ -1,4 +1,6 @@
 import jsep from "jsep";
+jsep.addUnaryOp('G');
+jsep.addUnaryOp('F');
 
 export default function transpileExpression(expr: string, literalSubstitution: Function): string {
   const ast = jsep(expr);
@@ -53,6 +55,12 @@ function walkExpression(expr: jsep.Expression, literalSubstitution: Function): s
       switch (unaryExpr.operator) {
         case '!':
           output = '~' + walkExpression(unaryExpr.argument, literalSubstitution);
+          break;
+        case 'G':
+          output = '[]' + walkExpression(unaryExpr.argument, literalSubstitution);
+          break;
+        case 'F':
+          output = '<>' + walkExpression(unaryExpr.argument, literalSubstitution);
           break;
         default:
           throw 'unexpected operator in unary expression ' + unaryExpr.operator;
