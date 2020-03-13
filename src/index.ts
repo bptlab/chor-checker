@@ -5,16 +5,23 @@ import cors from 'cors';
 import { checkModel } from './checker';
 import { generateTLA } from './generator';
 
-// setup server
+/**
+ * Server Setup
+ */
+
 const app = express();
-app.use(cors());
-app.use(morgan('tiny'));
-app.use(express.urlencoded({ extended: true }));
-app.use(express.json());
+app.use(cors());                                 // allow cross-origin calls
+app.use(morgan('tiny'));                         // log requests
+app.use(express.urlencoded({ extended: true })); // set request encoding
+app.use(express.json());                         // allow JSON request data
 
 app.listen(3000, () => console.log('Listening on port 3000!'));
 
-// entrypoint for model checking
+/**
+ * Routes
+ */
+
+// model checking
 app.post('/', (req, res, next) => {
   let model = req.body && req.body.diagram;
   let property = req.body && req.body.property;
@@ -27,6 +34,7 @@ app.post('/', (req, res, next) => {
   });
 });
 
+// TLAplus generator
 app.post('/convert', (req, res, next) => {
   const model = req.body && req.body.diagram;
   const property = req.body && req.body.property;

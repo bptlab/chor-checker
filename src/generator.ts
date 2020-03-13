@@ -3,16 +3,24 @@
  * Takes as an input a BPMN choreography diagram and outputs a
  * TLA+ specification for it.
  */
-import * as fs from 'fs';
-import * as path from 'path';
-import * as ejs from 'ejs';
-import { Choreography, SequenceFlow, ExclusiveGateway, FlowNode, IntermediateCatchEvent, ConditionalEventDefinition, ChoreographyTask, TimerEventDefinition } from 'bpmn-moddle';
+import fs from 'fs-extra';
+import ejs from 'ejs';
+import {
+  Choreography,
+  SequenceFlow,
+  ExclusiveGateway,
+  FlowNode,
+  IntermediateCatchEvent,
+  ConditionalEventDefinition,
+  ChoreographyTask,
+  TimerEventDefinition
+} from 'bpmn-moddle';
 import { is, getModel } from './helpers';
-import transpileExpression from './parser/expression';
+import { transpileExpression } from './parser/expression';
 
 // prepare the TLA template
 const template = ejs.compile(
-  fs.readFileSync(path.join(__dirname, '/../templates/Choreography.ejs.tla'), 'utf-8')
+  fs.readFileSync('./templates/Choreography.ejs.tla')
 );
 
 // some definitions

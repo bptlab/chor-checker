@@ -1,7 +1,7 @@
-import { generateTLA } from './generator';
-import parseState from './parser/parser';
 import fs from 'fs-extra';
 let child = require('child_process');
+import { generateTLA } from './generator';
+import parseState from './parser/parser';
 
 const EXECUTION_FOLDER = './execution';
 const KEEP_ARTIFACTS = true;

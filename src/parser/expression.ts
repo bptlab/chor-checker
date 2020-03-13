@@ -1,8 +1,21 @@
 import jsep from "jsep";
-jsep.addUnaryOp('G');
-jsep.addUnaryOp('F');
 
-export default function transpileExpression(expr: string, literalSubstitution: Function): string {
+/**
+ * Language Extension
+ */
+jsep.addUnaryOp('G'); // global temporal operator
+jsep.addUnaryOp('F'); // future (eventually) temporal operator
+
+/**
+ * Transpile an expression defined in the BPMN model via the Javascript-like syntax
+ * we use to a valid TLAplus expression. Includes subsitution capabilities to reference
+ * sequence flows etc. without knowing their IDs.
+ *
+ * @param expr Javascript-like expression
+ * @param literalSubstitution A function that is called on each literal and updates the
+ *  literal value with the return value
+ */
+export function transpileExpression(expr: string, literalSubstitution: Function): string {
   const ast = jsep(expr);
   return walkExpression(ast, literalSubstitution);
 }
@@ -54,17 +67,18 @@ function walkExpression(expr: jsep.Expression, literalSubstitution: Function): s
       const unaryExpr = <jsep.UnaryExpression> expr;
       switch (unaryExpr.operator) {
         case '!':
-          output = '~' + walkExpression(unaryExpr.argument, literalSubstitution);
+          operator = '~';
           break;
         case 'G':
-          output = '[]' + walkExpression(unaryExpr.argument, literalSubstitution);
+          operator = '[]';
           break;
         case 'F':
-          output = '<>' + walkExpression(unaryExpr.argument, literalSubstitution);
+          operator = '<>';
           break;
         default:
           throw 'unexpected operator in unary expression ' + unaryExpr.operator;
       }
+      output = operator + walkExpression(unaryExpr.argument, literalSubstitution);
       break;
 
     case 'Identifier':
