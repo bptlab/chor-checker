@@ -19,25 +19,25 @@
     "url": "https://github.com/jan-ladleif/chor-checker"
   },
   "devDependencies": {
-    "nodemon": "^1.18.11",
-    "tslint": "^5.15.0",
-    "typescript": "^3.4.3"
+    "nodemon": "^1.19.4",
+    "tslint": "^5.20.1",
+    "typescript": "^3.8.3"
   },
   "dependencies": {
-    "@types/morgan": "1.7.35",
+    "@types/bpmn-moddle": "^5.1.2",
     "@types/cors": "2.8.6",
-    "@types/bpmn-moddle": "^5.1.1",
+    "@types/express": "^4.17.3",
     "@types/fs-extra": "5.0.2",
-    "@types/express": "^4.16.1",
-    "@types/node": "^7.0.10",
+    "@types/morgan": "1.7.35",
+    "@types/node": "^12.12.31",
     "antlr4": "4.8.0",
-    "morgan": "1.9.1",
+    "bpmn-moddle": "^5.2.0",
     "cors": "2.8.5",
-    "bpmn-moddle": "^5.1.6",
-    "fs-extra": "8.1.0",
-    "esm": "^3.2.22",
-    "express": "^4.16.4",
     "ejs": "^3.0.1",
-    "jsep": "0.3.4"
+    "esm": "^3.2.25",
+    "express": "^4.17.1",
+    "fs-extra": "8.1.0",
+    "jsep": "0.3.4",
+    "morgan": "1.9.1"
   }
 }
