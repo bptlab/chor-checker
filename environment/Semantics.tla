@@ -6,7 +6,13 @@ EXTENDS TLC, FiniteSets, Naturals, Types, Definitions
 Problems:
   - we have to do symbolic abstraction somehow for conditions, otherwise the state-space becomes too big
   - maybe time scaling, i.e., when blocktime is 5 seconds but an event calls for a month
-  - propagate flow always propagates globally... so we would have to implement a set or something that keeps track of the flows to propagate during the current tx to avoid global side-effects
+
+Time:
+  - We use the block number as our timestamp and assume it is directly proportional to block timestamp.
+
+Token Propagation:
+  - Local: tokens get propagated only from the called task
+  - Global: all tokens in the entire model get propagated
 
 Optimization:
   - allow oracles to change only once per timestep
@@ -116,7 +122,7 @@ startTaskTx ==
 
 startOracleTx ==
   \E o \in Oracles : \E v \in OracleDomain[o] :
-    /\ oracleValues' = [ oracleValues EXCEPT ![o] = v ]
+    /\ oracleValues' = [ oracleValues EXCEPT ![o] = <<v, timestamp>> ]
     /\ curTx' = <<timestamp, OracleTx, o, v>>
   /\ UNCHANGED <<marking, messageValues, timestamp>>
 
@@ -141,7 +147,7 @@ Init ==
   /\ marking = [ f \in Flows |->
                      IF nodeType[source[f]] = EventStart THEN <<TRUE, 0>>
                      ELSE <<FALSE, 0>> ]
-  /\ oracleValues \in { ov \in [ Oracles -> AllOracleDomains ] : \A o \in Oracles : ov[o] \in OracleDomain[o] }
+  /\ oracleValues \in { ov \in [ Oracles -> AllOracleDomains \X { 0 } ] : \A o \in Oracles : ov[o][1] \in OracleDomain[o] }
   /\ messageValues \in { mv \in [ Tasks -> AllMessageDomains ] : \A t \in Tasks : mv[t] = NoPayload }
   /\ timestamp = 0
   /\ curTx = <<0, Empty, Empty, NoPayload>>
@@ -150,8 +156,8 @@ Spec == Init /\ [][Next]_var
 
 TypeInvariant ==
   /\ marking \in [ Flows -> BOOLEAN \X Nat ]
-  /\ oracleValues \in [ Oracles -> AllOracleDomains ]
-  /\ \A o \in Oracles : oracleValues[o] \in OracleDomain[o]
+  /\ oracleValues \in [ Oracles -> AllOracleDomains \X Nat ]
+  /\ \A o \in Oracles : oracleValues[o][1] \in OracleDomain[o]
   /\ messageValues \in [ Tasks -> AllMessageDomains ]
   /\ \A t \in Tasks : messageValues[t] \in { NoPayload } \union MessageDomain[t]
   /\ timestamp \in Nat

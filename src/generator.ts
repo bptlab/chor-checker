@@ -126,9 +126,9 @@ export function translateModel(choreo: Choreography, property: string): Object {
       // oracle values
       if (oracles.find(oracle => oracle.name == literal)) {
         if (short) {
-          return 'or["' + literal + '"]';
+          return 'or["' + literal + '"][1]';
         } else {
-          return 'oracleValues["' + literal + '"]';
+          return 'oracleValues["' + literal + '"][1]';
         }
       };
   
