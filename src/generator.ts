@@ -13,7 +13,8 @@ import {
   IntermediateCatchEvent,
   ConditionalEventDefinition,
   ChoreographyTask,
-  TimerEventDefinition
+  TimerEventDefinition,
+  SignalEventDefinition
 } from 'bpmn-moddle';
 import { is, getModel } from './helpers';
 import { transpileExpression } from './parser/expression';
@@ -237,6 +238,19 @@ export function translateModel(choreo: Choreography, property: string): Object {
       eventConditions.set(
         nodeMap.get(event),
         transpileExpression(expression, literalSubstitution())
+      );
+    } else if (is('bpmn:SignalEventDefinition')(definition)) {
+      const signal = (<SignalEventDefinition> definition).signalRef;
+
+      // add an oracle for the signal if not already done
+      if (!oracles.find(oracle => oracle.name == signal.name)) {
+        oracles.push({ name: signal.name, values: [0] });
+      }
+
+      // add a timed condition for this event
+      eventConditions.set(
+        nodeMap.get(event),
+        `(or["${ signal.name }"][2]>ma[f][2])`
       );
     }
   });
