@@ -20,7 +20,7 @@ import { transpileExpression } from './parser/expression';
 
 // prepare the TLA template
 const template = ejs.compile(
-  fs.readFileSync('./templates/Choreography.ejs.tla')
+  fs.readFileSync('./templates/Choreography.ejs.tla', { encoding: 'utf8' })
 );
 
 // some definitions
