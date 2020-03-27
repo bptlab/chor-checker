@@ -141,7 +141,7 @@ Next ==
       \/ startOracleTx
       \/ timestep
   \/
-    /\ curTx[2] = TaskTx
+    /\ curTx[2] \in { TaskTx, DeployTx }
     /\ UNCHANGED timestamp
     /\ IF Cardinality(enabledNodes) > 0
        THEN \E n \in enabledNodes : executeNode(n)
@@ -160,7 +160,7 @@ Init ==
   /\ oracleValues \in { ov \in [ Oracles -> AllOracleDomains \X { 0 } ] : \A o \in Oracles : ov[o][1] \in OracleDomain[o] }
   /\ messageValues \in { mv \in [ Tasks -> AllMessageDomains ] : \A t \in Tasks : mv[t] = NoPayload }
   /\ timestamp = 0
-  /\ curTx = <<0, Empty, Empty, NoPayload>>
+  /\ curTx = <<0, DeployTx, Empty, NoPayload>>
 
 Spec == Init /\ [][Next]_var
 
