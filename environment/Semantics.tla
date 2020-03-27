@@ -33,11 +33,6 @@ eventIntermediate(n) ==
                         ELSE IF ff \in outgoing(n) THEN <<TRUE, timestamp>>
                         ELSE marking[ff] ]
 
-\* TODO add gateway handling when first encountered
-\* gatewayEvent(n) ==
-\*   /\ \E f \in incoming(n) :
-\*     /\ marking[f][1]
-
 gatewayParallel(n) ==
   /\ \A f \in incoming(n) : marking[f][1]
   /\ marking' = [ f \in DOMAIN marking |->
@@ -61,14 +56,19 @@ eventEnd(n) ==
     /\ marking' = [ marking EXCEPT ![f] = <<FALSE, timestamp>> ]
 
 (* propagate flow *)
-propagateFlow ==
+isEnabled(n) ==
+  CASE nodeType[n] = GatewayParallel -> \A f \in incoming(n) : marking[f][1]
+    [] OTHER -> \E f \in incoming(n) : marking[f][1]
+
+enabledNodes == { n \in Nodes \ Tasks : isEnabled(n) /\ nodeType[n] /= GatewayEvent }
+
+executeNode(n) ==
   /\ UNCHANGED <<oracleValues, messageValues, curTx>>
-  /\ \E n \in Nodes \ Tasks :
-       CASE nodeType[n] = GatewayParallel -> gatewayParallel(n)
-         [] nodeType[n] = GatewayExclusive -> gatewayExclusive(n)
-         [] nodeType[n] = EventEnd -> eventEnd(n)
-         [] nodeType[n] = EventIntermediate -> eventIntermediate(n)
-         [] OTHER -> FALSE
+  /\ CASE nodeType[n] = GatewayParallel -> gatewayParallel(n)
+       [] nodeType[n] = GatewayExclusive -> gatewayExclusive(n)
+       [] nodeType[n] = EventEnd -> eventEnd(n)
+       [] nodeType[n] = EventIntermediate -> eventIntermediate(n)
+       [] OTHER -> FALSE
 
 (* end transactions *)
 endTx ==
@@ -99,8 +99,9 @@ startTaskTx ==
         /\ marking[fii][1]
         /\ ~\E fi2 \in outgoing(source[fi]) :
           /\ fi /= fi2
-          /\ target[fi2] = EventIntermediate
-          /\ evaluateIntermediateEvent(target[fi2], fii, marking, timestamp, oracleValues, messageValues)
+          /\ nodeType[target[fi2]] = EventIntermediate
+          /\ \E prev \in marking[fii][2]..timestamp :
+            /\ evaluateIntermediateEvent(target[fi2], fii, marking, prev, oracleValues, messageValues)
         /\ doStartTaskTx(t, {fi, fii})
     \* conditional enablement - _fii_ (e) fi (_t_)
     \/ \E fi \in incoming(t) :
@@ -133,14 +134,23 @@ timestep ==
 
 (* transition system *)
 Next ==
-  IF curTx[2] = Empty THEN
-    \/ startTaskTx
-    \/ startOracleTx
-    \/ timestep
-  ELSE
+  \/
+    /\ curTx[2] = Empty
+    /\
+      \/ startTaskTx
+      \/ startOracleTx
+      \/ timestep
+  \/
+    /\ curTx[2] = TaskTx
     /\ UNCHANGED timestamp
-    /\ IF PUSH_ORACLES \/ curTx[2] = TaskTx
-       THEN propagateFlow \/ endTx
+    /\ IF Cardinality(enabledNodes) > 0
+       THEN \E n \in enabledNodes : executeNode(n)
+       ELSE endTx
+  \/
+    /\ curTx[2] = OracleTx
+    /\ UNCHANGED timestamp
+    /\ IF PUSH_ORACLES /\ Cardinality(enabledNodes) > 0
+       THEN \E n \in enabledNodes : executeNode(n)
        ELSE endTx
 
 Init ==

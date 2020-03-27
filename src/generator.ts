@@ -259,7 +259,7 @@ export function translateModel(choreo: Choreography, property: string): Object {
       // add a timed condition for this event
       eventConditions.set(
         nodeMap.get(event),
-        `(or["${ signal.name }"][2]>ma[f][2])`
+        `(ma[f][2] <= or["${ signal.name }"][2])`
       );
     }
   });
