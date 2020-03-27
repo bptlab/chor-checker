@@ -142,11 +142,16 @@ Next ==
       \/ startOracleTx
       \/ timestep
   \/
-    /\ curTx[2] \in { TaskTx, DeployTx }
+    /\ curTx[2] = TaskTx
     /\ UNCHANGED timestamp
     /\ IF Cardinality(enabledNodes) > 0
        THEN \E n \in enabledNodes : executeNode(n)
        ELSE endTx
+  \/
+    /\ curTx[2] = DeployTx
+    /\ IF Cardinality(enabledNodes) > 0
+       THEN UNCHANGED timestamp /\ \E n \in enabledNodes : executeNode(n)
+       ELSE timestamp' = timestamp + 1 /\ endTx
   \/
     /\ curTx[2] = OracleTx
     /\ UNCHANGED timestamp
