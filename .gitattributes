@@ -1,0 +1,2 @@
+# Exclude generated ANTLR code from GitHub language overview
+src/parser/gen/* linguist-generated
