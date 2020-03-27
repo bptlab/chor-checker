@@ -3,7 +3,7 @@
 EXTENDS Types
 
 CONSTANTS
-    PUSH_ORACLES,
+    PUSH_ORACLES, MAX_TIMESTAMP,
     Tasks, Nodes, Flows,
     Oracles, OracleDomain, AllOracleDomains,
     MessageDomain, AllMessageDomains,

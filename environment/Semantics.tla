@@ -129,6 +129,7 @@ startOracleTx ==
 
 (* timestep processing *)
 timestep ==
+  /\ timestamp < MAX_TIMESTAMP
   /\ UNCHANGED <<marking, oracleValues, messageValues, curTx>>
   /\ timestamp' = timestamp + 1
 
@@ -170,7 +171,7 @@ TypeInvariant ==
   /\ \A o \in Oracles : oracleValues[o][1] \in OracleDomain[o]
   /\ messageValues \in [ Tasks -> AllMessageDomains ]
   /\ \A t \in Tasks : messageValues[t] \in { NoPayload } \union MessageDomain[t]
-  /\ timestamp \in Nat
+  /\ timestamp \in 0..MAX_TIMESTAMP
   /\ curTx \in Nat                                     (* timestamp *)
             \X TxType                                  (* transaction type *)
             \X (Tasks \union Oracles \union { Empty }) (* transaction target *)

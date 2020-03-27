@@ -127,7 +127,7 @@ export function translateModel(choreo: Choreography, property: string): Object {
       // special values
       if (literal == 'NO_TRANSACTION') {
         if (short) {
-          throw 'transaction can only be referenced from property perspective';
+          throw 'NO_TRANSACTION can only be referenced from property perspective';
         } else {
           return 'curTx[2] = Empty';
         }
