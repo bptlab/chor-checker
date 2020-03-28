@@ -5,6 +5,7 @@ import jsep from "jsep";
  */
 jsep.addUnaryOp('G'); // global temporal operator
 jsep.addUnaryOp('F'); // future (eventually) temporal operator
+jsep.addBinaryOp('~>', 0); // leads to operator of TLA
 
 /**
  * Transpile an expression defined in the BPMN model via the Javascript-like syntax
@@ -35,6 +36,7 @@ function walkExpression(expr: jsep.Expression, literalSubstitution: Function): s
         case '-':
         case '*':
         case '/':
+        case '~>':
           operator = binaryExpr.operator;
           break;
         default:
@@ -94,7 +96,7 @@ function walkExpression(expr: jsep.Expression, literalSubstitution: Function): s
       return (<jsep.Literal> expr).raw;
 
     default:
-      throw 'unexpected expression: ' + expr;
+      throw 'unexpected expression: ' + JSON.stringify(expr);
   }
 
   // enforce full bracketization for non-identifiers or non-literals
