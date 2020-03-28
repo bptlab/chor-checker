@@ -58,6 +58,7 @@ eventEnd(n) ==
 (* propagate flow *)
 isEnabled(n) ==
   CASE nodeType[n] = GatewayParallel -> \A f \in incoming(n) : marking[f][1]
+    [] nodeType[n] = EventIntermediate -> \E f \in incoming(n) : marking[f][1] /\ evaluateIntermediateEvent(n, f, marking, timestamp, oracleValues, messageValues)
     [] OTHER -> \E f \in incoming(n) : marking[f][1]
 
 enabledNodes == { n \in Nodes \ Tasks : isEnabled(n) /\ nodeType[n] /= GatewayEvent }
@@ -112,7 +113,6 @@ startTaskTx ==
           /\ nodeType[prepredecessor] = GatewayEvent
           /\ \E fiii \in incoming(prepredecessor) :
             /\ marking[fiii][1]
-            /\ Print(<<t,predecessor,prepredecessor,evaluateIntermediateEvent(predecessor, fiii, marking, timestamp, oracleValues, messageValues)>>, TRUE)
             /\ evaluateIntermediateEvent(predecessor, fiii, marking, timestamp, oracleValues, messageValues)
             (* TODO AND NO EARLIER ENABLED *)
             /\ doStartTaskTx(t, {fi, fii, fiii})
@@ -123,6 +123,27 @@ startOracleTx ==
     /\ curTx' = <<timestamp, OracleTx, o, v>>
   /\ UNCHANGED <<marking, messageValues, timestamp>>
 
+(* process transactions *)
+processTaskTx ==
+  /\ curTx[2] = TaskTx
+  /\ UNCHANGED timestamp
+  /\ IF Cardinality(enabledNodes) > 0
+     THEN \E n \in enabledNodes : executeNode(n)
+     ELSE endTx
+
+processOracleTx ==
+  /\ curTx[2] = OracleTx
+  /\ UNCHANGED timestamp
+  /\ IF PUSH_ORACLES /\ Cardinality(enabledNodes) > 0
+     THEN \E n \in enabledNodes : executeNode(n)
+     ELSE endTx
+
+processDeployTx ==
+  /\ curTx[2] = DeployTx
+  /\ IF Cardinality(enabledNodes) > 0
+     THEN UNCHANGED timestamp /\ \E n \in enabledNodes : executeNode(n)
+     ELSE timestamp' = timestamp + 1 /\ endTx
+
 (* timestep processing *)
 timestep ==
   /\ timestamp < MAX_TIMESTAMP
@@ -131,29 +152,15 @@ timestep ==
 
 (* transition system *)
 Next ==
+  \/ processTaskTx
+  \/ processDeployTx
+  \/ processOracleTx
   \/
     /\ curTx[2] = Empty
     /\
       \/ startTaskTx
       \/ startOracleTx
       \/ timestep
-  \/
-    /\ curTx[2] = TaskTx
-    /\ UNCHANGED timestamp
-    /\ IF Cardinality(enabledNodes) > 0
-       THEN \E n \in enabledNodes : executeNode(n)
-       ELSE endTx
-  \/
-    /\ curTx[2] = DeployTx
-    /\ IF Cardinality(enabledNodes) > 0
-       THEN UNCHANGED timestamp /\ \E n \in enabledNodes : executeNode(n)
-       ELSE timestamp' = timestamp + 1 /\ endTx
-  \/
-    /\ curTx[2] = OracleTx
-    /\ UNCHANGED timestamp
-    /\ IF PUSH_ORACLES /\ Cardinality(enabledNodes) > 0
-       THEN \E n \in enabledNodes : executeNode(n)
-       ELSE endTx
 
 Init ==
   /\ marking = [ f \in Flows |->
