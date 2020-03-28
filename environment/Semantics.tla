@@ -87,39 +87,35 @@ doStartTaskTx(t, reset) ==
   /\ UNCHANGED <<oracleValues, timestamp>>
 
 startTaskTx ==
-  \E t \in Tasks :
-    \* direct enablement - _fi_ (_t_)
-    \/ \E fi \in incoming(t) :
+  \E t \in Tasks : \E fi \in incoming(t) : LET predecessor == source[fi] IN
+    \/ \* direct enablement - _fi_ (_t_)
       /\ marking[fi][1]
       /\ doStartTaskTx(t, {fi})
-    \* indirect enablement - _fii_ (g) fi (_t_ | e...)
-    \/ \E fi \in incoming(t) :
-      /\ nodeType[source[fi]] = GatewayEvent
-      /\ \E fii \in incoming(source[fi]) :
-        /\ marking[fii][1]
-        /\ ~\E fi2 \in outgoing(source[fi]) :
-          /\ fi /= fi2
-          /\ nodeType[target[fi2]] = EventIntermediate
-          /\ \E prev \in marking[fii][2]..timestamp :
-            /\ evaluateIntermediateEvent(target[fi2], fii, marking, prev, oracleValues, messageValues)
+    \/ \* indirect enablement - _fii_ (g) fi | fj (_t_ | sibling...)
+      /\ nodeType[predecessor] = GatewayEvent
+      /\ \E fii \in incoming(predecessor) :
+        /\ marking[fii][1] \* predecessor is an enabled event-based gateway
+        /\ ~\E fj \in outgoing(predecessor) : LET sibling == target[fj] IN
+          /\ t /= sibling
+          /\ nodeType[sibling] = EventIntermediate
+          /\ \E history \in marking[fii][2]..timestamp :
+            /\ evaluateIntermediateEvent(target[fj], fii, marking, history, oracleValues, messageValues)
         /\ doStartTaskTx(t, {fi, fii})
-    \* conditional enablement - _fii_ (e) fi (_t_)
-    \/ \E fi \in incoming(t) :
-      /\ nodeType[source[fi]] = EventIntermediate
-      /\ \E fii \in incoming(source[fi]) :
-        /\ marking[fii][1]
-        /\ evaluateIntermediateEvent(source[fi], fii, marking, timestamp, oracleValues, messageValues)
-        /\ doStartTaskTx(t, {fi, fii})
-    \* conditional indirect enablement - _fiii_ (g) fii (e...) fi (_t_)
-    \/ \E fi \in incoming(t) :
-      /\ nodeType[source[fi]] = EventIntermediate
-      /\ \E fii \in incoming(source[fi]) :
-        /\ nodeType[source[fii]] = GatewayEvent
-        /\ \E fiii \in incoming(source[fii]) :
-          /\ marking[fiii][1]
-          /\ evaluateIntermediateEvent(source[fi], fiii, marking, timestamp, oracleValues, messageValues)
-          (* TODO AND NO EARLIER ENABLED *)
-          /\ doStartTaskTx(t, {fi, fii, fiii})
+    \/
+      /\ nodeType[predecessor] = EventIntermediate
+      /\ \E fii \in incoming(predecessor) : LET prepredecessor == source[fii] IN
+        \/ \* conditional enablement - _fii_ (e) fi (_t_)
+          /\ marking[fii][1]
+          /\ evaluateIntermediateEvent(predecessor, fii, marking, timestamp, oracleValues, messageValues)
+          /\ doStartTaskTx(t, {fi, fii})
+        \/ \* conditional indirect enablement - _fiii_ (g) fii (e...) fi (_t_)
+          /\ nodeType[prepredecessor] = GatewayEvent
+          /\ \E fiii \in incoming(prepredecessor) :
+            /\ marking[fiii][1]
+            /\ Print(<<t,predecessor,prepredecessor,evaluateIntermediateEvent(predecessor, fiii, marking, timestamp, oracleValues, messageValues)>>, TRUE)
+            /\ evaluateIntermediateEvent(predecessor, fiii, marking, timestamp, oracleValues, messageValues)
+            (* TODO AND NO EARLIER ENABLED *)
+            /\ doStartTaskTx(t, {fi, fii, fiii})
 
 startOracleTx ==
   \E o \in Oracles : \E v \in OracleDomain[o] :
@@ -168,7 +164,9 @@ Init ==
   /\ timestamp = 0
   /\ curTx = <<0, DeployTx, Empty, NoPayload>>
 
-Spec == Init /\ [][Next]_var
+Fairness == WF_var(startOracleTx) /\ WF_var(startTaskTx) /\ WF_var(timestep)
+
+Spec == Init /\ [][Next]_var /\ Fairness
 
 TypeInvariant ==
   /\ marking \in [ Flows -> BOOLEAN \X Nat ]
