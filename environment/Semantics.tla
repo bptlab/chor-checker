@@ -89,10 +89,20 @@ doStartTaskTx(t, reset) ==
 
 startTaskTx ==
   \E t \in Tasks : \E fi \in incoming(t) : LET predecessor == source[fi] IN
-    \/ \* direct enablement - _fi_ (_t_)
+
+    (* Direct Enablement.
+       A task is directly enabled, if there is a token on any incoming sequence flow.
+       Structure: _fi_ (t) *)
+    \/
       /\ marking[fi][1]
       /\ doStartTaskTx(t, {fi})
-    \/ \* indirect enablement - _fii_ (g) fi | fj (_t_ | sibling...)
+
+    (* Indirect Enablement.
+       A task is indirectly enabled, if it follows an event-based gateway and that
+       gateway is enabled. Additionally, no other successor of the event-based
+       gateway may have been enabled before, as in that case that node has to fire.
+       Structure: _fii_ (gw) fi | fj (t | sibling) *)
+    \/
       /\ nodeType[predecessor] = GatewayEvent
       /\ \E fii \in incoming(predecessor) :
         /\ marking[fii][1] \* predecessor is an enabled event-based gateway
@@ -100,21 +110,40 @@ startTaskTx ==
           /\ t /= sibling
           /\ nodeType[sibling] = EventIntermediate
           /\ \E history \in marking[fii][2]..timestamp :
-            /\ evaluateIntermediateEvent(target[fj], fii, marking, history, oracleValues, messageValues)
+            /\ evaluateIntermediateEvent(sibling, fii, marking, history, oracleValues, messageValues)
         /\ doStartTaskTx(t, {fi, fii})
+
+    (* Conditional Enablement.
+       A task is conditionally enabled if it follows an intermediate catch event
+       that is enabled and can fire.
+       Structure: _fii_ (e) fi (t) *)
     \/
       /\ nodeType[predecessor] = EventIntermediate
       /\ \E fii \in incoming(predecessor) : LET prepredecessor == source[fii] IN
-        \/ \* conditional enablement - _fii_ (e) fi (_t_)
+        \/
           /\ marking[fii][1]
           /\ evaluateIntermediateEvent(predecessor, fii, marking, timestamp, oracleValues, messageValues)
           /\ doStartTaskTx(t, {fi, fii})
-        \/ \* conditional indirect enablement - _fiii_ (g) fii (e...) fi (_t_)
+
+    (* Indirect Conditional Enablement.
+       A task is indirectly conditionally enabled if it follows an intermediate catch
+       event that is enabled via an event-based gateway and can fire.
+       Additionally, no other successor of the event-based gateway should have been
+       enabled since an earlier point in time than this one. If that is the case, the
+       other event has precedence.
+       Structure: _fiii_ (g) fii (e | presibling) fi (t) *)
+        \/
           /\ nodeType[prepredecessor] = GatewayEvent
           /\ \E fiii \in incoming(prepredecessor) :
             /\ marking[fiii][1]
             /\ evaluateIntermediateEvent(predecessor, fiii, marking, timestamp, oracleValues, messageValues)
-            (* TODO AND NO EARLIER ENABLED *)
+            /\ ~\E fij \in outgoing(prepredecessor) : LET presibling == target[fij] IN
+              /\ predecessor /= presibling
+              /\ nodeType[presibling] = EventIntermediate
+              /\ \E history \in marking[fiii][2]..timestamp :
+                /\ evaluateIntermediateEvent(presibling, fiii, marking, history, oracleValues, messageValues)
+                /\ ~\E history2 \in marking[fiii][2]..history :
+                  evaluateIntermediateEvent(predecessor, fiii, marking, history2, oracleValues, messageValues)
             /\ doStartTaskTx(t, {fi, fii, fiii})
 
 startOracleTx ==
