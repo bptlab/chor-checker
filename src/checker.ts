@@ -55,29 +55,38 @@ export async function checkModel(xml: string, property: string): Promise<Object>
       });
     }
 
-    // output proper string
+    // prepare output
     console.log(id, 'TLC finished');
-
-    // parse output
     const lines = log.split(/\r?\n/);
-
-    let trace: Object[] = [];
-    for (let i = 0; i < lines.length; i++) {
-      if (/State [1-9][0-9]*: <.*?>/.test(lines[i])) {
-        let j = i + 1;
-        while (j < lines.length && lines[j].length >= 0) {
-          j++;
-        }
-        const stateText = lines.slice(i + 1, j).join(' ');
-        const state = parseState(stateText);
-        trace.push(state);
-      }
-    }
-    console.log(id, 'Parsed output, trace steps found:', trace.length);
-
-    return {
-      lines,
-      trace
+    let output : object = {
+      lines
     };
+
+    // check if the property was fulfilled
+    if (log.indexOf('Model checking completed. No error has been found.') >= 0) {
+      output['result'] = true;
+      console.log(id, 'Property satisfied');
+    } else {
+      output['result'] = false;
+
+      // parse counterexample trace
+      let trace: Object[] = [];
+      for (let i = 0; i < lines.length; i++) {
+        if (/State [1-9][0-9]*: <.*?>/.test(lines[i])) {
+          let j = i + 1;
+          while (j < lines.length && lines[j].length >= 0) {
+            j++;
+          }
+          const stateText = lines.slice(i + 1, j).join(' ');
+          const state = parseState(stateText);
+          trace.push(state);
+        }
+      }
+      output['trace'] = trace;
+
+      console.log(id, 'Property violated, counterexample length:', trace.length);
+    }
+
+    return output;
   });
 };
