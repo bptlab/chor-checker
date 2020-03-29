@@ -77,9 +77,10 @@ endTx ==
   /\ curTx' = <<timestamp, Empty, Empty, NoPayload>>
 
 (* start transactions *)
-doStartTaskTx(t, reset) ==
+doStartTaskTx(t, consume, touch) ==
   /\ marking' = [ f \in DOMAIN marking |->
-                      IF f \in reset THEN <<FALSE, timestamp>>
+                      IF f = consume THEN <<FALSE, marking[f][2]>>
+                      ELSE IF f \in touch THEN <<FALSE, timestamp>>
                       ELSE IF f \in outgoing(t) THEN <<TRUE, timestamp>>
                       ELSE marking[f] ]
   /\ \E mv \in MessageDomain[t] :
@@ -95,7 +96,7 @@ startTaskTx ==
        Structure: _fi_ (t) *)
     \/
       /\ marking[fi][1]
-      /\ doStartTaskTx(t, {fi})
+      /\ doStartTaskTx(t, fi, {})
 
     (* Indirect Enablement.
        A task is indirectly enabled, if it follows an event-based gateway and that
@@ -111,7 +112,7 @@ startTaskTx ==
           /\ nodeType[sibling] = EventIntermediate
           /\ \E history \in marking[fii][2]..timestamp :
             /\ evaluateIntermediateEvent(sibling, fii, marking, history, oracleValues, messageValues)
-        /\ doStartTaskTx(t, {fi, fii})
+        /\ doStartTaskTx(t, fii, {fi})
 
     (* Conditional Enablement.
        A task is conditionally enabled if it follows an intermediate catch event
@@ -123,7 +124,7 @@ startTaskTx ==
         \/
           /\ marking[fii][1]
           /\ evaluateIntermediateEvent(predecessor, fii, marking, timestamp, oracleValues, messageValues)
-          /\ doStartTaskTx(t, {fi, fii})
+          /\ doStartTaskTx(t, fii, {fi})
 
     (* Indirect Conditional Enablement.
        A task is indirectly conditionally enabled if it follows an intermediate catch
@@ -144,7 +145,7 @@ startTaskTx ==
                 /\ evaluateIntermediateEvent(presibling, fiii, marking, history, oracleValues, messageValues)
                 /\ ~\E history2 \in marking[fiii][2]..history :
                   evaluateIntermediateEvent(predecessor, fiii, marking, history2, oracleValues, messageValues)
-            /\ doStartTaskTx(t, {fi, fii, fiii})
+            /\ doStartTaskTx(t, fiii, {fi, fii})
 
 startOracleTx ==
   \E o \in Oracles : \E v \in OracleDomain[o] :
