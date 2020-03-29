@@ -176,7 +176,8 @@ processDeployTx ==
 (* timestep processing *)
 timestep ==
   /\ timestamp < MAX_TIMESTAMP
-  /\ UNCHANGED <<marking, oracleValues, messageValues, curTx>>
+  /\ UNCHANGED <<marking, oracleValues, messageValues>>
+  /\ curTx' = <<timestamp + 1, Empty, Empty, NoPayload>>
   /\ timestamp' = timestamp + 1
 
 (* transition system *)
