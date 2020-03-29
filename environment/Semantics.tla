@@ -71,11 +71,6 @@ executeNode(n) ==
        [] nodeType[n] = EventIntermediate -> eventIntermediate(n)
        [] OTHER -> FALSE
 
-(* end transactions *)
-endTx ==
-  /\ UNCHANGED <<marking, oracleValues, messageValues>>
-  /\ curTx' = <<timestamp, Empty, Empty, NoPayload>>
-
 (* start transactions *)
 doStartTaskTx(t, consume, touch) ==
   /\ marking' = [ f \in DOMAIN marking |->
@@ -154,25 +149,27 @@ startOracleTx ==
   /\ UNCHANGED <<marking, messageValues, timestamp>>
 
 (* process transactions *)
+canEndTx ==
+  CASE curTx[2] = TaskTx -> Cardinality(enabledNodes) = 0
+    [] curTx[2] = OracleTx -> ~PUSH_ORACLES \/ Cardinality(enabledNodes) = 0
+    [] curTx[2] = DeployTx -> Cardinality(enabledNodes) = 0
+    [] OTHER -> TRUE
+
 processTaskTx ==
   /\ curTx[2] = TaskTx
   /\ UNCHANGED timestamp
-  /\ IF Cardinality(enabledNodes) > 0
-     THEN \E n \in enabledNodes : executeNode(n)
-     ELSE endTx
+  /\ \E n \in enabledNodes : executeNode(n)
 
 processOracleTx ==
   /\ curTx[2] = OracleTx
   /\ UNCHANGED timestamp
-  /\ IF PUSH_ORACLES /\ Cardinality(enabledNodes) > 0
-     THEN \E n \in enabledNodes : executeNode(n)
-     ELSE endTx
+  /\ PUSH_ORACLES
+  /\ \E n \in enabledNodes : executeNode(n)
 
 processDeployTx ==
   /\ curTx[2] = DeployTx
-  /\ IF Cardinality(enabledNodes) > 0
-     THEN UNCHANGED timestamp /\ \E n \in enabledNodes : executeNode(n)
-     ELSE timestamp' = timestamp + 1 /\ endTx
+  /\ UNCHANGED timestamp
+  /\ \E n \in enabledNodes : executeNode(n)
 
 (* timestep processing *)
 timestep ==
@@ -187,10 +184,12 @@ Next ==
   \/ processDeployTx
   \/ processOracleTx
   \/
-    /\ curTx[2] = Empty
+    /\ canEndTx
     /\
-      \/ startTaskTx
-      \/ startOracleTx
+      \/ curTx[2] /= DeployTx \* require timestep after deploy
+        /\
+          \/ startTaskTx
+          \/ startOracleTx
       \/ timestep
 
 Init ==
