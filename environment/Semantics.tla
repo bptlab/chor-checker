@@ -29,14 +29,14 @@ eventIntermediate(n) ==
     /\ marking[f][1]
     /\ evaluateIntermediateEvent(n, f, marking, timestamp, oracleValues, messageValues)
     /\ marking' = [ ff \in DOMAIN marking |->
-                        IF ff = f THEN <<FALSE, timestamp>>
+                        IF ff = f THEN <<FALSE, marking[f][2]>>
                         ELSE IF ff \in outgoing(n) THEN <<TRUE, timestamp>>
                         ELSE marking[ff] ]
 
 gatewayParallel(n) ==
   /\ \A f \in incoming(n) : marking[f][1]
   /\ marking' = [ f \in DOMAIN marking |->
-                      IF f \in incoming(n) THEN <<FALSE, timestamp>>
+                      IF f \in incoming(n) THEN <<FALSE, marking[f][2]>>
                       ELSE IF f \in outgoing(n) THEN <<TRUE, timestamp>>
                       ELSE marking[f] ]
 
@@ -46,14 +46,14 @@ gatewayExclusive(n) ==
     /\ LET enabled == { fo \in outgoing(n) : evaluateFlow(fo, oracleValues, messageValues) } IN
       IF Cardinality(enabled) > 0 THEN
         /\ \E ff \in enabled : 
-          /\ marking' = [ marking EXCEPT ![f] = <<FALSE, timestamp>>, ![ff] = <<TRUE, timestamp>> ]
+          /\ marking' = [ marking EXCEPT ![f] = <<FALSE, @[2]>>, ![ff] = <<TRUE, timestamp>> ]
       ELSE
-        /\ marking' = [ marking EXCEPT ![f] = <<FALSE, timestamp>>, ![defaultFlow[n]] = <<TRUE, timestamp>> ]
+        /\ marking' = [ marking EXCEPT ![f] = <<FALSE, @[2]>>, ![defaultFlow[n]] = <<TRUE, timestamp>> ]
 
 eventEnd(n) ==
   /\ \E f \in incoming(n) :
     /\ marking[f][1]
-    /\ marking' = [ marking EXCEPT ![f] = <<FALSE, timestamp>> ]
+    /\ marking' = [ marking EXCEPT ![f] = <<FALSE, @[2]>> ]
 
 (* propagate flow *)
 isEnabled(n) ==
