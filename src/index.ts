@@ -30,6 +30,7 @@ app.post('/', (req, res, next) => {
     res.set('Content-Type', 'application/json');
     res.send(output);
   }).catch(error => {
+    console.error(error);
     res.status(500);
     res.set('Content-Type', 'application/json');
     res.send({ error });
@@ -45,6 +46,7 @@ app.post('/convert', (req, res, next) => {
     res.set('Content-Type', 'application/json');
     res.send({ tla });
   }).catch(error => {
+    console.error(error);
     res.status(500);
     res.set('Content-Type', 'application/json');
     res.send({ error });
