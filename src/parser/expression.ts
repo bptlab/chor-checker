@@ -6,6 +6,8 @@ import jsep from "jsep";
 jsep.addUnaryOp('G'); // global temporal operator
 jsep.addUnaryOp('F'); // future (eventually) temporal operator
 jsep.addBinaryOp('~>', 0); // leads to operator of TLA
+jsep.addBinaryOp('=>', 6); // implication operator of TLA
+jsep.addBinaryOp('<=>', 6); // equivalence operator of TLA
 
 /**
  * Transpile an expression defined in the BPMN model via the Javascript-like syntax
@@ -32,11 +34,16 @@ function walkExpression(expr: jsep.Expression, literalSubstitution: Function): s
         case '==':
           operator = '=';
           break;
+        case '!=':
+          operator = '/=';
+          break;
         case '+':
         case '-':
         case '*':
         case '/':
         case '~>':
+        case '=>':
+        case '<=>':
           operator = binaryExpr.operator;
           break;
         default:
