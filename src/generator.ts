@@ -132,6 +132,13 @@ export function translateModel(choreo: Choreography, property: string): Object {
           return 'curTx[2] = Empty';
         }
       }
+      if (literal == 'TIMESTAMP') {
+        if (short) {
+          throw 'TIMESTAMP can only be referenced from property perspective';
+        } else {
+          return 'timestamp';
+        }
+      }
 
       // oracle values
       if (oracles.find(oracle => oracle.name == literal)) {

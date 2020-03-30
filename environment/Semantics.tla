@@ -25,6 +25,8 @@ var == <<marking, oracleValues, messageValues, timestamp, curTx>>
 
 PAST == -1
 
+hasFinished == Cardinality({ f \in Flows : marking[f][1] }) = 0
+
 (* transaction processing *)
 eventIntermediate(n) ==
   /\ \E f \in incoming(n) :
@@ -145,16 +147,25 @@ startTaskTx ==
             /\ doStartTaskTx(t, fiii, {fi, fii})
 
 startOracleTx ==
-  \E o \in Oracles : \E v \in OracleDomain[o] :
-    /\ oracleValues' = [ oracleValues EXCEPT ![o] = <<v, timestamp>> ]
-    /\ curTx' = <<timestamp, OracleTx, o, v>>
+  \E o \in Oracles :
+    /\ oracleValues[o][2] < timestamp \* only allow one change per timestep
+    /\ \E v \in OracleDomain[o] :
+      /\ oracleValues' = [ oracleValues EXCEPT ![o] = <<v, timestamp>> ]
+      /\ curTx' = <<timestamp, OracleTx, o, v>>
   /\ UNCHANGED <<marking, messageValues, timestamp>>
 
+(* timestep processing *)
+timestep ==
+  /\ timestamp < MAX_TIMESTAMP
+  /\ UNCHANGED <<marking, oracleValues, messageValues>>
+  /\ curTx' = <<timestamp + 1, Empty, Empty, NoPayload>>
+  /\ timestamp' = timestamp + 1
+
 (* process transactions *)
-canEndTx ==
+canStartNewTx ==
   CASE curTx[2] = TaskTx -> Cardinality(enabledNodes) = 0
     [] curTx[2] = OracleTx -> ~PUSH_ORACLES \/ Cardinality(enabledNodes) = 0
-    [] curTx[2] = DeployTx -> Cardinality(enabledNodes) = 0
+    [] curTx[2] = DeployTx -> FALSE \* deploy tx ends itself with a timestep
     [] OTHER -> TRUE
 
 processTaskTx ==
@@ -164,35 +175,30 @@ processTaskTx ==
 
 processOracleTx ==
   /\ curTx[2] = OracleTx
-  /\ UNCHANGED timestamp
   /\ PUSH_ORACLES
+  /\ UNCHANGED timestamp
   /\ \E n \in enabledNodes : executeNode(n)
 
 processDeployTx ==
   /\ curTx[2] = DeployTx
-  /\ UNCHANGED timestamp
-  /\ \E n \in enabledNodes : executeNode(n)
-
-(* timestep processing *)
-timestep ==
-  /\ timestamp < MAX_TIMESTAMP
-  /\ UNCHANGED <<marking, oracleValues, messageValues>>
-  /\ curTx' = <<timestamp + 1, Empty, Empty, NoPayload>>
-  /\ timestamp' = timestamp + 1
+  /\ IF Cardinality(enabledNodes) > 0
+     THEN /\ UNCHANGED timestamp
+          /\ \E n \in enabledNodes : executeNode(n)
+     ELSE /\ timestep \* end with a timestep
 
 (* transition system *)
 Next ==
-  \/ processTaskTx
-  \/ processDeployTx
-  \/ processOracleTx
-  \/
-    /\ canEndTx
-    /\
-      \/ curTx[2] /= DeployTx \* require timestep after deploy
-        /\
-          \/ startTaskTx
-          \/ startOracleTx
-      \/ timestep
+  /\ ~hasFinished
+  /\
+    \/ processTaskTx
+    \/ processDeployTx
+    \/ processOracleTx
+    \/
+      /\ canStartNewTx
+      /\
+        \/ startTaskTx
+        \/ startOracleTx
+        \/ timestep
 
 Init ==
   /\ marking = [ f \in Flows |->
@@ -209,7 +215,13 @@ Init ==
   /\ timestamp = 0
   /\ curTx = <<0, DeployTx, Empty, NoPayload>>
 
-Fairness == WF_var(startOracleTx) /\ WF_var(startTaskTx) /\ WF_var(timestep)
+Fairness ==
+  /\ WF_var(processTaskTx)
+  /\ WF_var(processOracleTx)
+  /\ WF_var(processDeployTx)
+  /\ WF_var(startOracleTx)
+  /\ WF_var(startTaskTx)
+  /\ WF_var(timestep)
 
 Spec == Init /\ [][Next]_var /\ Fairness
 
