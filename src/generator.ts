@@ -114,7 +114,7 @@ export function translateModel(choreo: Choreography, property: string): Object {
 
   // check if we have oracles involved
   if (choreo.documentation) {
-    const doc = JSON.parse(choreo.documentation.map(d => d.text).join());
+    const doc = JSON.parse(choreo.documentation.map(d => d.text).join() || '{}');
     if (doc && doc.oracles) {
       oracles = doc.oracles;
     }
