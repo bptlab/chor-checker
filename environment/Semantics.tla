@@ -30,14 +30,14 @@ eventIntermediate(n) ==
   /\ \E f \in incoming(n) :
     /\ marking[f][1]
     /\ evaluateIntermediateEvent(n, f, marking, timestamp, oracleValues, messageValues)
-    /\ marking' = [ ff \in DOMAIN marking |->
+    /\ marking' = [ ff \in Flows |->
                         IF ff = f THEN <<FALSE, marking[f][2]>>
                         ELSE IF ff \in outgoing(n) THEN <<TRUE, timestamp>>
                         ELSE marking[ff] ]
 
 gatewayParallel(n) ==
   /\ \A f \in incoming(n) : marking[f][1]
-  /\ marking' = [ f \in DOMAIN marking |->
+  /\ marking' = [ f \in Flows |->
                       IF f \in incoming(n) THEN <<FALSE, marking[f][2]>>
                       ELSE IF f \in outgoing(n) THEN <<TRUE, timestamp>>
                       ELSE marking[f] ]
@@ -75,7 +75,7 @@ executeNode(n) ==
 
 (* start transactions *)
 doStartTaskTx(t, consume, touch) ==
-  /\ marking' = [ f \in DOMAIN marking |->
+  /\ marking' = [ f \in Flows |->
                       IF f = consume THEN <<FALSE, marking[f][2]>>
                       ELSE IF f \in touch THEN <<FALSE, timestamp>>
                       ELSE IF f \in outgoing(t) THEN <<TRUE, timestamp>>
