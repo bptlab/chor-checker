@@ -1,6 +1,6 @@
 ---------------- MODULE Semantics ----------------
 
-EXTENDS TLC, FiniteSets, Naturals, Types, Definitions
+EXTENDS TLC, FiniteSets, Integers, Naturals, Types, Definitions
 
 (*
 Problems:
@@ -22,6 +22,8 @@ Optimization:
 VARIABLES marking, oracleValues, messageValues, timestamp, curTx
 
 var == <<marking, oracleValues, messageValues, timestamp, curTx>>
+
+PAST == -1
 
 (* transaction processing *)
 eventIntermediate(n) ==
@@ -196,8 +198,14 @@ Init ==
   /\ marking = [ f \in Flows |->
                      IF nodeType[source[f]] = EventStart THEN <<TRUE, 0>>
                      ELSE <<FALSE, 0>> ]
-  /\ oracleValues \in { ov \in [ Oracles -> AllOracleDomains \X { 0 } ] : \A o \in Oracles : ov[o][1] \in OracleDomain[o] }
-  /\ messageValues \in { mv \in [ Tasks -> AllMessageDomains ] : \A t \in Tasks : mv[t] = NoPayload }
+  /\ oracleValues \in {
+       ov \in [ Oracles -> AllOracleDomains \X { PAST } ] :
+         \A o \in Oracles : ov[o][1] \in OracleDomain[o]
+     }
+  /\ messageValues \in {
+       mv \in [ Tasks -> AllMessageDomains ] :
+         \A t \in Tasks : mv[t] = NoPayload
+     }
   /\ timestamp = 0
   /\ curTx = <<0, DeployTx, Empty, NoPayload>>
 
@@ -207,7 +215,7 @@ Spec == Init /\ [][Next]_var /\ Fairness
 
 TypeInvariant ==
   /\ marking \in [ Flows -> BOOLEAN \X Nat ]
-  /\ oracleValues \in [ Oracles -> AllOracleDomains \X Nat ]
+  /\ oracleValues \in [ Oracles -> AllOracleDomains \X (Nat \union { PAST }) ]
   /\ \A o \in Oracles : oracleValues[o][1] \in OracleDomain[o]
   /\ messageValues \in [ Tasks -> AllMessageDomains ]
   /\ \A t \in Tasks : messageValues[t] \in { NoPayload } \union MessageDomain[t]
