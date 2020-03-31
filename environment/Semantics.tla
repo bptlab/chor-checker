@@ -85,66 +85,66 @@ doStartTaskTx(t, consume, touch) ==
   /\ \E mv \in MessageDomain[t] :
     /\ curTx' = <<timestamp, TaskTx, t, mv>>
     /\ messageValues' = [ messageValues EXCEPT ![t] = mv ]
-  /\ UNCHANGED <<oracleValues, timestamp>>
 
 startTaskTx ==
-  \E t \in Tasks : \E fi \in incoming(t) : LET predecessor == source[fi] IN
+  /\ UNCHANGED <<oracleValues, timestamp>>
+  /\ \E t \in Tasks : \E fi \in incoming(t) : LET predecessor == source[fi] IN
 
-    (* Direct Enablement.
-       A task is directly enabled, if there is a token on any incoming sequence flow.
-       Structure: _fi_ (t) *)
-    \/
-      /\ marking[fi][1]
-      /\ doStartTaskTx(t, fi, {})
+      (* Direct Enablement.
+        A task is directly enabled, if there is a token on any incoming sequence flow.
+        Structure: _fi_ (t) *)
+      \/
+        /\ marking[fi][1]
+        /\ doStartTaskTx(t, fi, {})
 
-    (* Indirect Enablement.
-       A task is indirectly enabled, if it follows an event-based gateway and that
-       gateway is enabled. Additionally, no other successor of the event-based
-       gateway may have been enabled before, as in that case that node has to fire.
-       Structure: _fii_ (gw) fi | fj (t | sibling) *)
-    \/
-      /\ nodeType[predecessor] = GatewayEvent
-      /\ \E fii \in incoming(predecessor) :
-        /\ marking[fii][1] \* predecessor is an enabled event-based gateway
-        /\ ~\E fj \in outgoing(predecessor) : LET sibling == target[fj] IN
-          /\ t /= sibling
-          /\ nodeType[sibling] = EventIntermediate
-          /\ \E history \in marking[fii][2]..timestamp :
-            /\ evaluateIntermediateEvent(sibling, fii, marking, history, oracleValues, messageValues)
-        /\ doStartTaskTx(t, fii, {fi})
-
-    (* Conditional Enablement.
-       A task is conditionally enabled if it follows an intermediate catch event
-       that is enabled and can fire.
-       Structure: _fii_ (e) fi (t) *)
-    \/
-      /\ nodeType[predecessor] = EventIntermediate
-      /\ \E fii \in incoming(predecessor) : LET prepredecessor == source[fii] IN
-        \/
-          /\ marking[fii][1]
-          /\ evaluateIntermediateEvent(predecessor, fii, marking, timestamp, oracleValues, messageValues)
+      (* Indirect Enablement.
+        A task is indirectly enabled, if it follows an event-based gateway and that
+        gateway is enabled. Additionally, no other successor of the event-based
+        gateway may have been enabled before, as in that case that node has to fire.
+        Structure: _fii_ (gw) fi | fj (t | sibling) *)
+      \/
+        /\ nodeType[predecessor] = GatewayEvent
+        /\ \E fii \in incoming(predecessor) :
+          /\ marking[fii][1] \* predecessor is an enabled event-based gateway
+          /\ ~\E fj \in outgoing(predecessor) : LET sibling == target[fj] IN
+            /\ t /= sibling
+            /\ nodeType[sibling] = EventIntermediate
+            /\ \E history \in marking[fii][2]..timestamp :
+              /\ evaluateIntermediateEvent(sibling, fii, marking, history, oracleValues, messageValues)
           /\ doStartTaskTx(t, fii, {fi})
 
-    (* Indirect Conditional Enablement.
-       A task is indirectly conditionally enabled if it follows an intermediate catch
-       event that is enabled via an event-based gateway and can fire.
-       Additionally, no other successor of the event-based gateway should have been
-       enabled since an earlier point in time than this one. If that is the case, the
-       other event has precedence.
-       Structure: _fiii_ (g) fii (e | presibling) fi (t) *)
-        \/
-          /\ nodeType[prepredecessor] = GatewayEvent
-          /\ \E fiii \in incoming(prepredecessor) :
-            /\ marking[fiii][1]
-            /\ evaluateIntermediateEvent(predecessor, fiii, marking, timestamp, oracleValues, messageValues)
-            /\ ~\E fij \in outgoing(prepredecessor) : LET presibling == target[fij] IN
-              /\ predecessor /= presibling
-              /\ nodeType[presibling] = EventIntermediate
-              /\ \E history \in marking[fiii][2]..timestamp :
-                /\ evaluateIntermediateEvent(presibling, fiii, marking, history, oracleValues, messageValues)
-                /\ ~\E history2 \in marking[fiii][2]..history :
-                  evaluateIntermediateEvent(predecessor, fiii, marking, history2, oracleValues, messageValues)
-            /\ doStartTaskTx(t, fiii, {fi, fii})
+      (* Conditional Enablement.
+        A task is conditionally enabled if it follows an intermediate catch event
+        that is enabled and can fire.
+        Structure: _fii_ (e) fi (t) *)
+      \/
+        /\ nodeType[predecessor] = EventIntermediate
+        /\ \E fii \in incoming(predecessor) : LET prepredecessor == source[fii] IN
+          \/
+            /\ marking[fii][1]
+            /\ evaluateIntermediateEvent(predecessor, fii, marking, timestamp, oracleValues, messageValues)
+            /\ doStartTaskTx(t, fii, {fi})
+
+      (* Indirect Conditional Enablement.
+        A task is indirectly conditionally enabled if it follows an intermediate catch
+        event that is enabled via an event-based gateway and can fire.
+        Additionally, no other successor of the event-based gateway should have been
+        enabled since an earlier point in time than this one. If that is the case, the
+        other event has precedence.
+        Structure: _fiii_ (g) fii (e | presibling) fi (t) *)
+          \/
+            /\ nodeType[prepredecessor] = GatewayEvent
+            /\ \E fiii \in incoming(prepredecessor) :
+              /\ marking[fiii][1]
+              /\ evaluateIntermediateEvent(predecessor, fiii, marking, timestamp, oracleValues, messageValues)
+              /\ ~\E fij \in outgoing(prepredecessor) : LET presibling == target[fij] IN
+                /\ predecessor /= presibling
+                /\ nodeType[presibling] = EventIntermediate
+                /\ \E history \in marking[fiii][2]..timestamp :
+                  /\ evaluateIntermediateEvent(presibling, fiii, marking, history, oracleValues, messageValues)
+                  /\ ~\E history2 \in marking[fiii][2]..history :
+                    evaluateIntermediateEvent(predecessor, fiii, marking, history2, oracleValues, messageValues)
+              /\ doStartTaskTx(t, fiii, {fi, fii})
 
 startOracleTx ==
   \E o \in Oracles :
