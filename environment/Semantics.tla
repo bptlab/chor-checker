@@ -203,7 +203,7 @@ Next ==
 Init ==
   /\ marking = [ f \in Flows |->
                      IF nodeType[source[f]] = EventStart THEN <<TRUE, 0>>
-                     ELSE <<FALSE, 0>> ]
+                     ELSE <<FALSE, PAST>> ]
   /\ oracleValues \in {
        ov \in [ Oracles -> AllOracleDomains \X { PAST } ] :
          \A o \in Oracles : ov[o][1] \in OracleDomain[o]
@@ -226,7 +226,7 @@ Fairness ==
 Spec == Init /\ [][Next]_var /\ Fairness
 
 TypeInvariant ==
-  /\ marking \in [ Flows -> BOOLEAN \X Nat ]
+  /\ marking \in [ Flows -> BOOLEAN \X (Nat \union {PAST}) ]
   /\ oracleValues \in [ Oracles -> AllOracleDomains \X (Nat \union { PAST }) ]
   /\ \A o \in Oracles : oracleValues[o][1] \in OracleDomain[o]
   /\ messageValues \in [ Tasks -> AllMessageDomains ]
