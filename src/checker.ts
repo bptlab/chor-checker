@@ -69,11 +69,14 @@ export async function checkModel(xml: string, property: string): Promise<Object>
     } else {
       output['result'] = false;
 
+      const statePattern = /State ([1-9][0-9]*): <.*?>/;
+      const invariantPattern = /Error: Invariant .*? is violated by the initial state:/;
+      const loopPattern = /Back to state ([1-9][0-9]*): <.*?>/;
+
       // parse counterexample trace
       let trace: Object[] = [];
       for (let i = 0; i < lines.length; i++) {
-        if (/State [1-9][0-9]*: <.*?>/.test(lines[i]) ||
-            /Error: Invariant .*? is violated by the initial state:/.test(lines[i])) {
+        if (statePattern.test(lines[i]) || invariantPattern.test(lines[i])) {
           let j = i + 1;
           while (j < lines.length && lines[j].length >= 0) {
             j++;
@@ -81,6 +84,11 @@ export async function checkModel(xml: string, property: string): Promise<Object>
           const stateText = lines.slice(i + 1, j).join(' ');
           const state = parseState(stateText);
           trace.push(state);
+        } else if (loopPattern.test(lines[i])) {
+          const targetState = loopPattern.exec(lines[i])[1];
+          trace.push({
+            loop: targetState
+          });
         }
       }
       output['trace'] = trace;
