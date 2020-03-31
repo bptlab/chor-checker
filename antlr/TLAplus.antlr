@@ -11,11 +11,13 @@ variable : IDENTIFIER EQUALS value ;
 value : tuple
       | mapping
       | literal
+      | set
       ;
 
 tuple : TUPLE_OPEN (value (COMMA value)*)? TUPLE_CLOSE ;
 mapping : MAPPING_OPEN (mappingItem (COMMA mappingItem)*)? MAPPING_CLOSE ;
 mappingItem : IDENTIFIER MAPS_TO value ;
+set : SET_OPEN (value (COMMA value)*)? SET_CLOSE ;
 literal : NUMBER
         | STRING
         | BOOLEAN
@@ -38,5 +40,7 @@ TUPLE_OPEN : '<<' ;
 TUPLE_CLOSE : '>>' ;
 MAPPING_OPEN : '[' ;
 MAPPING_CLOSE : ']' ;
+SET_OPEN : '{' ;
+SET_CLOSE : '}' ;
 
 WS : (' ' | '\t' | '\n')+ -> channel(HIDDEN) ;

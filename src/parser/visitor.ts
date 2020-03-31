@@ -32,6 +32,11 @@ export default class TraceVisitor extends TLAplusVisitor {
     return super.visitTuple(ctx).filter(notUndefined);
   };
 
+  visitSet(ctx) {
+    // a sets gets mapped to an array of values implicitly
+    return super.visitSet(ctx).filter(notUndefined);
+  };
+
   visitMapping(ctx) {
     // a mapping is a set of mapping items which get merged into one object
     return Object.assign({}, ...super.visitMapping(ctx).filter(notUndefined));

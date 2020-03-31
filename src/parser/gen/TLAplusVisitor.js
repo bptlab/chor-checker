@@ -48,6 +48,12 @@ TLAplusVisitor.prototype.visitMappingItem = function(ctx) {
 };
 
 
+// Visit a parse tree produced by TLAplusParser#set.
+TLAplusVisitor.prototype.visitSet = function(ctx) {
+  return this.visitChildren(ctx);
+};
+
+
 // Visit a parse tree produced by TLAplusParser#literal.
 TLAplusVisitor.prototype.visitLiteral = function(ctx) {
   return this.visitChildren(ctx);
