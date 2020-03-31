@@ -25,45 +25,44 @@ var == <<marking, oracleValues, messageValues, timestamp, curTx>>
 
 PAST == -1
 
-hasFinished == Cardinality({ f \in Flows : marking[f][1] }) = 0
+hasFinished == Cardinality(marking) = 0
+
+flowEnabled(f) == \E m \in marking : m[1] = f
 
 (* transaction processing *)
 eventIntermediate(n) ==
-  /\ \E f \in incoming(n) :
-    /\ marking[f][1]
-    /\ evaluateIntermediateEvent(n, f, marking, timestamp, oracleValues, messageValues)
-    /\ marking' = [ ff \in Flows |->
-                        IF ff = f THEN <<FALSE, marking[f][2]>>
-                        ELSE IF ff \in outgoing(n) THEN <<TRUE, timestamp>>
-                        ELSE marking[ff] ]
+  /\ \E m \in marking : LET f == m[1] IN
+    /\ f \in incoming(n)
+    /\ evaluateIntermediateEvent(n, m, marking, timestamp, oracleValues, messageValues)
+    /\ marking' = (marking \ { m }) \union (outgoing(n) \X { timestamp })
 
 gatewayParallel(n) ==
-  /\ \A f \in incoming(n) : marking[f][1]
-  /\ marking' = [ f \in Flows |->
-                      IF f \in incoming(n) THEN <<FALSE, marking[f][2]>>
-                      ELSE IF f \in outgoing(n) THEN <<TRUE, timestamp>>
-                      ELSE marking[f] ]
+  /\ LET inMarking == { <<f, c>> \in marking : f \in incoming(n) } IN
+    /\ Cardinality(incoming(n)) = Cardinality(inMarking)
+    /\ marking' = (marking \ inMarking) \union (outgoing(n) \X { timestamp })
 
 gatewayExclusive(n) ==
-  /\ \E f \in incoming(n) :
-    /\ marking[f][1]
-    /\ LET enabled == { fo \in outgoing(n) : evaluateFlow(fo, oracleValues, messageValues) } IN
-      IF Cardinality(enabled) > 0 THEN
-        /\ \E ff \in enabled : 
-          /\ marking' = [ marking EXCEPT ![f] = <<FALSE, @[2]>>, ![ff] = <<TRUE, timestamp>> ]
+  /\ \E m \in marking : LET f == m[1] IN
+    /\ f \in incoming(n)
+    /\ LET enabledFlows == { fo \in outgoing(n) : evaluateFlow(fo, oracleValues, messageValues) } IN
+      IF Cardinality(enabledFlows) > 0 THEN
+        /\ \E ff \in enabledFlows :
+          /\ marking' = (marking \ { m }) \union { <<ff, timestamp>> }
       ELSE
-        /\ marking' = [ marking EXCEPT ![f] = <<FALSE, @[2]>>, ![defaultFlow[n]] = <<TRUE, timestamp>> ]
+        /\ marking' = (marking \ { m }) \union { <<defaultFlow[n], timestamp>> }
 
 eventEnd(n) ==
-  /\ \E f \in incoming(n) :
-    /\ marking[f][1]
-    /\ marking' = [ marking EXCEPT ![f] = <<FALSE, @[2]>> ]
+  /\ \E m \in marking : LET f == m[1] IN
+    /\ f \in incoming(n)
+    /\ marking' = marking \ { m }
 
 (* propagate flow *)
 isEnabled(n) ==
-  CASE nodeType[n] = GatewayParallel -> \A f \in incoming(n) : marking[f][1]
-    [] nodeType[n] = EventIntermediate -> \E f \in incoming(n) : marking[f][1] /\ evaluateIntermediateEvent(n, f, marking, timestamp, oracleValues, messageValues)
-    [] OTHER -> \E f \in incoming(n) : marking[f][1]
+  CASE nodeType[n] = GatewayParallel -> \A f \in incoming(n) : flowEnabled(f)
+    [] nodeType[n] = EventIntermediate -> \E m \in marking : LET f == m[1] IN
+                                       /\ f \in incoming(n)
+                                       /\ evaluateIntermediateEvent(n, m, marking, timestamp, oracleValues, messageValues)
+    [] OTHER -> \E f \in incoming(n) : flowEnabled(f)
 
 enabledNodes == { n \in Nodes \ Tasks : isEnabled(n) /\ nodeType[n] /= GatewayEvent }
 
@@ -76,26 +75,24 @@ executeNode(n) ==
        [] OTHER -> FALSE
 
 (* start transactions *)
-doStartTaskTx(t, consume, touch) ==
-  /\ marking' = [ f \in Flows |->
-                      IF f = consume THEN <<FALSE, marking[f][2]>>
-                      ELSE IF f \in touch THEN <<FALSE, timestamp>>
-                      ELSE IF f \in outgoing(t) THEN <<TRUE, timestamp>>
-                      ELSE marking[f] ]
+doStartTaskTx(t, consume) ==
+  /\ marking' = (marking \ { consume }) \union (outgoing(t) \X { timestamp })
   /\ \E mv \in MessageDomain[t] :
     /\ curTx' = <<timestamp, TaskTx, t, mv>>
     /\ messageValues' = [ messageValues EXCEPT ![t] = mv ]
 
 startTaskTx ==
   /\ UNCHANGED <<oracleValues, timestamp>>
-  /\ \E t \in Tasks : \E fi \in incoming(t) : LET predecessor == source[fi] IN
+  /\ \E t \in Tasks :
+    /\ \E fi \in incoming(t) : LET predecessor == source[fi] IN
 
       (* Direct Enablement.
         A task is directly enabled, if there is a token on any incoming sequence flow.
         Structure: _fi_ (t) *)
       \/
-        /\ marking[fi][1]
-        /\ doStartTaskTx(t, fi, {})
+        /\ \E mi \in marking :
+          /\ mi[1] = fi
+          /\ doStartTaskTx(t, mi)
 
       (* Indirect Enablement.
         A task is indirectly enabled, if it follows an event-based gateway and that
@@ -105,13 +102,14 @@ startTaskTx ==
       \/
         /\ nodeType[predecessor] = GatewayEvent
         /\ \E fii \in incoming(predecessor) :
-          /\ marking[fii][1] \* predecessor is an enabled event-based gateway
-          /\ ~\E fj \in outgoing(predecessor) : LET sibling == target[fj] IN
-            /\ t /= sibling
-            /\ nodeType[sibling] = EventIntermediate
-            /\ \E history \in marking[fii][2]..timestamp :
-              /\ evaluateIntermediateEvent(sibling, fii, marking, history, oracleValues, messageValues)
-          /\ doStartTaskTx(t, fii, {fi})
+          /\ \E mii \in marking :
+            /\ mii[1] = fii \* predecessor is an enabled event-based gateway
+            /\ ~\E fj \in outgoing(predecessor) : LET sibling == target[fj] IN
+              /\ t /= sibling
+              /\ nodeType[sibling] = EventIntermediate
+              /\ \E history \in mii[2]..timestamp :
+                /\ evaluateIntermediateEvent(sibling, mii, marking, history, oracleValues, messageValues)
+            /\ doStartTaskTx(t, mii)
 
       (* Conditional Enablement.
         A task is conditionally enabled if it follows an intermediate catch event
@@ -121,9 +119,10 @@ startTaskTx ==
         /\ nodeType[predecessor] = EventIntermediate
         /\ \E fii \in incoming(predecessor) : LET prepredecessor == source[fii] IN
           \/
-            /\ marking[fii][1]
-            /\ evaluateIntermediateEvent(predecessor, fii, marking, timestamp, oracleValues, messageValues)
-            /\ doStartTaskTx(t, fii, {fi})
+            /\ \E mii \in marking :
+              /\ mii[1] = fii
+              /\ evaluateIntermediateEvent(predecessor, mii, marking, timestamp, oracleValues, messageValues)
+              /\ doStartTaskTx(t, mii)
 
       (* Indirect Conditional Enablement.
         A task is indirectly conditionally enabled if it follows an intermediate catch
@@ -135,16 +134,17 @@ startTaskTx ==
           \/
             /\ nodeType[prepredecessor] = GatewayEvent
             /\ \E fiii \in incoming(prepredecessor) :
-              /\ marking[fiii][1]
-              /\ evaluateIntermediateEvent(predecessor, fiii, marking, timestamp, oracleValues, messageValues)
-              /\ ~\E fij \in outgoing(prepredecessor) : LET presibling == target[fij] IN
-                /\ predecessor /= presibling
-                /\ nodeType[presibling] = EventIntermediate
-                /\ \E history \in marking[fiii][2]..timestamp :
-                  /\ evaluateIntermediateEvent(presibling, fiii, marking, history, oracleValues, messageValues)
-                  /\ ~\E history2 \in marking[fiii][2]..history :
-                    evaluateIntermediateEvent(predecessor, fiii, marking, history2, oracleValues, messageValues)
-              /\ doStartTaskTx(t, fiii, {fi, fii})
+              /\ \E miii \in marking :
+                /\ miii[1] = fiii
+                /\ evaluateIntermediateEvent(predecessor, miii, marking, timestamp, oracleValues, messageValues)
+                /\ ~\E fij \in outgoing(prepredecessor) : LET presibling == target[fij] IN
+                  /\ predecessor /= presibling
+                  /\ nodeType[presibling] = EventIntermediate
+                  /\ \E history \in miii[2]..timestamp :
+                    /\ evaluateIntermediateEvent(presibling, miii, marking, history, oracleValues, messageValues)
+                    /\ ~\E history2 \in miii[2]..history :
+                      evaluateIntermediateEvent(predecessor, miii, marking, history2, oracleValues, messageValues)
+                /\ doStartTaskTx(t, miii)
 
 startOracleTx ==
   \E o \in Oracles :
@@ -201,9 +201,7 @@ Next ==
         \/ timestep
 
 Init ==
-  /\ marking = [ f \in Flows |->
-                     IF nodeType[source[f]] = EventStart THEN <<TRUE, 0>>
-                     ELSE <<FALSE, PAST>> ]
+  /\ marking = { <<f, c>> \in Flows \X { 0 } : nodeType[source[f]] = EventStart }
   /\ oracleValues \in {
        ov \in [ Oracles -> AllOracleDomains \X { PAST } ] :
          \A o \in Oracles : ov[o][1] \in OracleDomain[o]
@@ -226,7 +224,8 @@ Fairness ==
 Spec == Init /\ [][Next]_var /\ Fairness
 
 TypeInvariant ==
-  /\ marking \in [ Flows -> BOOLEAN \X (Nat \union {PAST}) ]
+  /\ marking \subseteq Flows \X Nat
+  /\ \A m1 \in marking : ~\E m2 \in marking : (m1[1] = m2[1] /\ m1[2] /= m2[2]) \* 1-safety
   /\ oracleValues \in [ Oracles -> AllOracleDomains \X (Nat \union { PAST }) ]
   /\ \A o \in Oracles : oracleValues[o][1] \in OracleDomain[o]
   /\ messageValues \in [ Tasks -> AllMessageDomains ]

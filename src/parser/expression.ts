@@ -94,10 +94,11 @@ function walkExpression(expr: jsep.Expression, literalSubstitution: Function): s
       // lookup oracles
       const identifier = <jsep.Identifier> expr;
       const substitution = literalSubstitution(identifier.name);
-      if (substitution) {
-        return substitution;
+      if (!substitution) {
+        throw 'unexpected identifier, neither oracle nor message: ' + identifier.name;
       }
-      throw 'unexpected identifier, neither oracle nor message: ' + identifier.name;
+      output = substitution;
+      break;
 
     case 'Literal':
       return (<jsep.Literal> expr).raw;

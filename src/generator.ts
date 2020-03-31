@@ -140,12 +140,22 @@ export function translateModel(choreo: Choreography, property: string): Object {
         }
       }
 
+      // sequence flow markings
+      const flow = flows.find(flow => flow.name == literal);
+      if (flow) {
+        if (short) {
+          return `\\E m \\in ma : m[1] = "${ flowMap.get(flow) }"`;
+        } else {
+          return `\\E m \\in marking : m[1] = "${ flowMap.get(flow) }"`;
+        }
+      }
+
       // oracle values
       if (oracles.find(oracle => oracle.name == literal)) {
         if (short) {
-          return 'or["' + literal + '"][1]';
+          return `or["${ literal }"][1]`;
         } else {
-          return 'oracleValues["' + literal + '"][1]';
+          return `oracleValues["${ literal }"][1]`;
         }
       };
   
@@ -166,16 +176,6 @@ export function translateModel(choreo: Choreography, property: string): Object {
           return 'me["' + nodeMap.get(task) + '"]';
         } else {
           return 'messageValues["' + nodeMap.get(task) + '"]';
-        }
-      }
-  
-      // sequence flow markings
-      const flow = flows.find(flow => flow.name == literal);
-      if (flow) {
-        if (short) {
-          return 'ma["' + flowMap.get(flow) + '"][1]';
-        } else {
-          return 'marking["' + flowMap.get(flow) + '"][1]';
         }
       }
     }
@@ -244,7 +244,7 @@ export function translateModel(choreo: Choreography, property: string): Object {
       const timerDef = (<TimerEventDefinition> definition);
       let expression;
       if (timerDef.timeDuration) {
-        expression = `(ti >= ma[f][2] + ${ timerDef.timeDuration.body })`;
+        expression = `(ti >= m[2] + ${ timerDef.timeDuration.body })`;
       } else if (timerDef.timeDate) {
         //TODO research whether this is the actual semantics of absolute timer events --- can they fire after the exact time has passed?
         expression = `(ti = ${ timerDef.timeDate.body })`;
@@ -267,7 +267,7 @@ export function translateModel(choreo: Choreography, property: string): Object {
       // add a timed condition for this event
       eventConditions.set(
         nodeMap.get(event),
-        `(ma[f][2] <= or["${ signal.name }"][2])`
+        `(m[2] <= or["${ signal.name }"][2])`
       );
     }
   });

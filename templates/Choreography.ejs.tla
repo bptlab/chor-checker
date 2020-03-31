@@ -73,7 +73,7 @@ PayloadDomain == { NoPayload } \union AllMessageDomains \union AllOracleDomains
 
 (* For these conditions, we can not use the variables directly. We have
    to get them as parameters. *)
-evaluateIntermediateEvent(n, f, ma, ti, or, me) ==
+evaluateIntermediateEvent(n, m, ma, ti, or, me) ==
 <% if (eventConditions.size == 0) { _%>
   FALSE
 <% } else { _%>
