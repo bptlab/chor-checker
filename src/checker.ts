@@ -72,7 +72,8 @@ export async function checkModel(xml: string, property: string): Promise<Object>
       // parse counterexample trace
       let trace: Object[] = [];
       for (let i = 0; i < lines.length; i++) {
-        if (/State [1-9][0-9]*: <.*?>/.test(lines[i])) {
+        if (/State [1-9][0-9]*: <.*?>/.test(lines[i]) ||
+            /Error: Invariant .*? is violated by the initial state:/.test(lines[i])) {
           let j = i + 1;
           while (j < lines.length && lines[j].length >= 0) {
             j++;
