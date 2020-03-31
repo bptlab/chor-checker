@@ -72,6 +72,7 @@ export async function checkModel(xml: string, property: string): Promise<Object>
       const statePattern = /State ([1-9][0-9]*): <.*?>/;
       const invariantPattern = /Error: Invariant .*? is violated by the initial state:/;
       const loopPattern = /Back to state ([1-9][0-9]*): <.*?>/;
+      const stutteringPattern = /State ([1-9][0-9]*): Stuttering/;
 
       // parse counterexample trace
       let trace: Object[] = [];
@@ -88,6 +89,10 @@ export async function checkModel(xml: string, property: string): Promise<Object>
           const targetState = loopPattern.exec(lines[i])[1];
           trace.push({
             loop: targetState
+          });
+        } else if (stutteringPattern.test(lines[i])) {
+          trace.push({
+            stuttering: true
           });
         }
       }
