@@ -1,6 +1,6 @@
 ---------------- MODULE Semantics ----------------
 
-EXTENDS TLC, FiniteSets, Integers, Naturals, Types, Definitions
+EXTENDS TLC, FiniteSets, Integers, Naturals, Types, Definitions, Sequences
 
 (*
 Problems:
@@ -148,9 +148,13 @@ startTaskTx ==
 
 startOracleTx ==
   \E o \in Oracles :
-    /\ oracleValues[o][2] < timestamp \* only allow one change per timestep
+    /\ ~\E i \in DOMAIN oracleValues : \* only allow one change per timestep
+      /\ oracleValues[i][1] = o
+      /\ oracleValues[i][3] = timestamp
     /\ \E v \in OracleDomain[o] :
-      /\ oracleValues' = [ oracleValues EXCEPT ![o] = <<v, timestamp>> ]
+      /\ IF HISTORY_ORACLES
+         THEN oracleValues' = <<<<o, v, timestamp>>>> \o oracleValues
+         ELSE \E i \in DOMAIN oracleValues : oracleValues[i][1] = o /\ oracleValues' = [ oracleValues EXCEPT ![i] = <<o, v, timestamp>> ]
       /\ curTx' = <<timestamp, OracleTx, o, v>>
   /\ UNCHANGED <<marking, messageValues, timestamp>>
 
@@ -200,12 +204,19 @@ Next ==
         \/ startOracleTx
         \/ timestep
 
+Range(f) == { f[x] : x \in DOMAIN f }
+OrderSet(set) == CHOOSE seq \in [1..Cardinality(set) -> set]: Range(seq) = set
+
 Init ==
   /\ marking = { <<f, c>> \in Flows \X { 0 } : nodeType[source[f]] = EventStart }
-  /\ oracleValues \in {
-       ov \in [ Oracles -> AllOracleDomains \X { PAST } ] :
-         \A o \in Oracles : ov[o][1] \in OracleDomain[o]
-     }
+  /\ LET num == Cardinality(Oracles)
+         ordering == OrderSet(Oracles) IN
+    /\ oracleValues \in [1..num -> (Oracles \X AllOracleDomains \X { PAST })]
+    /\ \A o \in Oracles :
+      /\ \E i \in 1..num :
+        /\ ordering[i] = o
+        /\ oracleValues[i][1] = o
+        /\ oracleValues[i][2] \in OracleDomain[o]
   /\ messageValues \in {
        mv \in [ Tasks -> AllMessageDomains ] :
          \A t \in Tasks : mv[t] = NoPayload
@@ -226,8 +237,8 @@ Spec == Init /\ [][Next]_var /\ Fairness
 TypeInvariant ==
   /\ marking \subseteq Flows \X Nat
   /\ \A m1 \in marking : ~\E m2 \in marking : (m1[1] = m2[1] /\ m1[2] /= m2[2]) \* 1-safety
-  /\ oracleValues \in [ Oracles -> AllOracleDomains \X (Nat \union { PAST }) ]
-  /\ \A o \in Oracles : oracleValues[o][1] \in OracleDomain[o]
+  /\ oracleValues \in Seq(Oracles \X AllOracleDomains \X (Nat \union { PAST }))
+  /\ \A i \in DOMAIN oracleValues : oracleValues[i][2] \in OracleDomain[oracleValues[i][1]]
   /\ messageValues \in [ Tasks -> AllMessageDomains ]
   /\ \A t \in Tasks : messageValues[t] \in { NoPayload } \union MessageDomain[t]
   /\ timestamp \in 0..MAX_TIMESTAMP

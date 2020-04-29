@@ -23,7 +23,8 @@ EXTENDS TLC, Naturals, Types
 VARIABLES marking, timestamp, oracleValues, messageValues, curTx
 
 PUSH_ORACLES == FALSE
-MAX_TIMESTAMP == 10
+HISTORY_ORACLES == FALSE
+MAX_TIMESTAMP == 3
 
 Tasks == {
   <%- taskIDs.map(bracketize).join(',\n  ') %>
