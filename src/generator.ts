@@ -244,10 +244,9 @@ export function translateModel(choreo: Choreography, property: string): Object {
       const timerDef = (<TimerEventDefinition> definition);
       let expression;
       if (timerDef.timeDuration) {
-        expression = `(ti >= m[2] + ${ timerDef.timeDuration.body })`;
+        expression = `(t >= enablement + ${ timerDef.timeDuration.body })`;
       } else if (timerDef.timeDate) {
-        //TODO research whether this is the actual semantics of absolute timer events --- can they fire after the exact time has passed?
-        expression = `(ti = ${ timerDef.timeDate.body })`;
+        expression = `(t >= ${ timerDef.timeDate.body })`;
       }
       eventConditions.set(nodeMap.get(event), expression);
     } else if (is('bpmn:ConditionalEventDefinition')(definition)) {
@@ -267,7 +266,7 @@ export function translateModel(choreo: Choreography, property: string): Object {
       // add a timed condition for this event
       eventConditions.set(
         nodeMap.get(event),
-        `(m[2] <= or["${ signal.name }"][2])`
+        `(enablement <= or["${ signal.name }"][2])`
       );
     }
   });

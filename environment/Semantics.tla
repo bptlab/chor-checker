@@ -3,190 +3,216 @@
 EXTENDS TLC, FiniteSets, Integers, Naturals, Types, Definitions
 
 (*
-Problems:
-  - we have to do symbolic abstraction somehow for conditions, otherwise the state-space becomes too big
-  - maybe time scaling, i.e., when blocktime is 5 seconds but an event calls for a month
+- GOAL
+  * Show that we do not need to put trust into anyone?
+  * Prove that the performance is good?
+  * Under which circumstances some things can not happen?
+  * Low-level effects of blockchain protocols?
+    > Miners can always choose not to include a transaction
 
-Time:
-  - We use the block number as our timestamp and assume it is directly proportional to block timestamp.
+- MODEL
+  * Transaction Pool
+  * Which elements do transactions target?
+    > Tasks?
+    > Elements?
+  * External Data Sources, with symbolic abstraction
+    > Request data?
+    > Do they update all the time?
+    > Only model interaction with the process?
+  * Reduce to Time Domain, so there are no leaps in timestamps
 
-Token Propagation:
-  - Local: tokens get propagated only from the called task
-  - Global: all tokens in the entire model get propagated
+- OPERATORS
+  * Should-have-fired
+  * Has-fired
+  * => G(! should-have-fired /\ !has-fired)
+
+- Timers
+  * Block timestamp
+  * Block number
+  * Parameter
+  * On-chain oracle
+  * Off-chain oracle
+- Conditionals
+  * Traditional oracles & sampling strategies
+  * New oracles (history, pub/sub)
+  * Global/local token propagation
 
 Optimization:
   - allow oracles to change only once per timestep
+
+Assumptions:
+  - 1-safe
+  - Every element has exactly one incoming and one outgoing sequence flow
+    > Except gateways, which have at least one each
+    > Start events, which have no incoming
+    > End events, which have no outgoing
 *)
 
-(* configuration *)
 VARIABLES marking, oracleValues, messageValues, timestamp, curTx
-
 var == <<marking, oracleValues, messageValues, timestamp, curTx>>
 
-PAST == -1
+(* ---------------------- *)
+(* --- Node Execution --- *)
+(* ---------------------- *)
 
-hasFinished == Cardinality(marking) = 0
+modifyMarking(consume, produce) ==
+  /\ marking' = (marking \ { m \in marking : m[1] \in consume })
+                \union { <<f, timestamp>> : f \in produce }
+  /\ curTx' = [curTx EXCEPT !.touch = @ \union produce]
 
-flowEnabled(f) == \E m \in marking : m[1] = f
+(* These operators are only called on nodes which are executable in the context
+   of the specific current transaction.
+   That is, we do not have to check for markings anymore, or whether a
+   condition of an intermediate event is fulfilled. *)
 
-(* transaction processing *)
-eventIntermediate(n) ==
-  /\ \E m \in marking : LET f == m[1] IN
-    /\ f \in incoming(n)
-    /\ evaluateIntermediateEvent(n, m, marking, timestamp, oracleValues, messageValues)
-    /\ marking' = (marking \ { m }) \union (outgoing(n) \X { timestamp })
+executeTask(n) ==
+  /\ modifyMarking({ incoming(n) } \union { incoming(nn) : nn \in siblings[n] }, { outgoing(n) })
 
-gatewayParallel(n) ==
-  /\ LET inMarking == { <<f, c>> \in marking : f \in incoming(n) } IN
-    /\ Cardinality(incoming(n)) = Cardinality(inMarking)
-    /\ marking' = (marking \ inMarking) \union (outgoing(n) \X { timestamp })
+executeEventEnd(n) ==
+  /\ modifyMarking({ incoming(n) }, {})
 
-gatewayExclusive(n) ==
-  /\ \E m \in marking : LET f == m[1] IN
-    /\ f \in incoming(n)
-    /\ LET enabledFlows == { fo \in outgoing(n) : evaluateFlow(fo, oracleValues, messageValues) } IN
-      IF Cardinality(enabledFlows) > 0 THEN
-        /\ \E ff \in enabledFlows :
-          /\ marking' = (marking \ { m }) \union { <<ff, timestamp>> }
-      ELSE
-        /\ marking' = (marking \ { m }) \union { <<defaultFlow[n], timestamp>> }
+executeEventIntermediate(n) ==
+  /\ modifyMarking({ incoming(n) } \union { incoming(nn) : nn \in siblings[n] }, { outgoing(n) })
 
-eventEnd(n) ==
-  /\ \E m \in marking : LET f == m[1] IN
-    /\ f \in incoming(n)
-    /\ marking' = marking \ { m }
+executeGatewayEvent(n) ==
+  /\ modifyMarking({ incoming(n) }, { f \in Flows : source[f] = n })
 
-(* propagate flow *)
-isEnabled(n) ==
-  CASE nodeType[n] = GatewayParallel -> \A f \in incoming(n) : flowEnabled(f)
-    [] nodeType[n] = EventIntermediate -> \E m \in marking : LET f == m[1] IN
-                                       /\ f \in incoming(n)
-                                       /\ evaluateIntermediateEvent(n, m, marking, timestamp, oracleValues, messageValues)
-    [] OTHER -> \E f \in incoming(n) : flowEnabled(f)
+executeGatewayParallel(n) ==
+  /\ modifyMarking({ f \in Flows : target[f] = n }, { f \in Flows : source[f] = n })
 
-enabledNodes == { n \in Nodes \ Tasks : isEnabled(n) /\ nodeType[n] /= GatewayEvent }
+executeGatewayExclusive(n) ==
+  /\ LET enabledFlows == { f \in Flows : source[f] = n /\ evaluateFlow(f, oracleValues, messageValues) } IN
+    IF enabledFlows /= {} THEN
+      /\ \E f \in enabledFlows :
+        /\ modifyMarking({ ff \in Flows : target[ff] = n }, { f })
+    ELSE
+      /\ modifyMarking({ f \in Flows : target[f] = n }, { defaultFlow[n] })
+
+(* ---------------------- *)
+(* ---   Enablement   --- *)
+(* ---------------------- *)
+hasToken(f) == \E m \in marking : m[1] = f
+
+triggerTimeAfter(n, t) ==
+  CASE nodeType[n] = EventIntermediate ->
+        LET triggerTimes == { tt \in t..timestamp : evaluateEventAt(n, t, tt, marking, oracleValues, messageValues) } IN
+          IF triggerTimes = {}
+          THEN PAST
+          ELSE CHOOSE tt \in triggerTimes : \A ttt \in triggerTimes : tt <= ttt
+    [] nodeType[n] = Task -> timestamp + 1
+    [] OTHER -> FALSE
+
+isExecutionFlow(n, f) ==
+  /\ \E m \in marking :
+    /\ m[1] = f
+    /\ target[m[1]] = n
+    /\ CASE nodeType[n] = GatewayParallel -> \A ff \in Flows : target[ff] = n => hasToken(ff)
+         [] nodeType[n] \in { Task, EventIntermediate } -> LET t == triggerTimeAfter(n, m[2]) IN
+            /\ PAST < t
+            /\ ~\E nn \in siblings[n] : LET tt == triggerTimeAfter(nn, m[2]) IN
+              /\ PAST < tt
+              /\ tt < t
+         [] OTHER -> TRUE
+
+executionFlows(n) == { f \in Flows : isExecutionFlow(n, f) }
 
 executeNode(n) ==
-  /\ UNCHANGED <<oracleValues, messageValues, curTx>>
-  /\ CASE nodeType[n] = GatewayParallel -> gatewayParallel(n)
-       [] nodeType[n] = GatewayExclusive -> gatewayExclusive(n)
-       [] nodeType[n] = EventEnd -> eventEnd(n)
-       [] nodeType[n] = EventIntermediate -> eventIntermediate(n)
+  /\ UNCHANGED <<oracleValues, messageValues>>
+  /\ CASE nodeType[n] = Task -> executeTask(n)
+       [] nodeType[n] = GatewayParallel -> executeGatewayParallel(n)
+       [] nodeType[n] = GatewayExclusive -> executeGatewayExclusive(n)
+       [] nodeType[n] = GatewayEvent -> executeGatewayEvent(n)
+       [] nodeType[n] = EventEnd -> executeEventEnd(n)
+       [] nodeType[n] = EventIntermediate -> executeEventIntermediate(n)
        [] OTHER -> FALSE
 
-(* start transactions *)
-doStartTaskTx(t, consume) ==
-  /\ marking' = (marking \ { consume }) \union (outgoing(t) \X { timestamp })
+executableNodes == { n \in Nodes :
+  /\ nodeType[n] = Task => curTx.target = n
+  /\ \E f \in executionFlows(n) : f \in curTx.touch
+}
+
+(* ---------------------- *)
+(* ---     Tasks      --- *)
+(* ---------------------- *)
+doStartTaskTx(t, f) ==
   /\ \E mv \in MessageDomain[t] :
-    /\ curTx' = <<timestamp, TaskTx, t, mv>>
+    /\ curTx' = [ type |-> TaskTx,
+                  target |-> t,
+                  payload |-> mv,
+                  touch |-> { f } ]
     /\ messageValues' = [ messageValues EXCEPT ![t] = mv ]
 
 startTaskTx ==
-  /\ UNCHANGED <<oracleValues, timestamp>>
-  /\ \E t \in Tasks :
-    /\ \E fi \in incoming(t) : LET predecessor == source[fi] IN
+  /\ UNCHANGED <<oracleValues, timestamp, marking>>
+  /\ \E n \in Tasks :
+    (* Direct Enablement.
+      A task is directly enabled, if there is a token on any incoming sequence flow.
+      Structure: _fi_ (t) *)
+    \/
+      /\ executionFlows(n) /= {}
+      /\ doStartTaskTx(n, incoming(n))
 
-      (* Direct Enablement.
-        A task is directly enabled, if there is a token on any incoming sequence flow.
-        Structure: _fi_ (t) *)
-      \/
-        /\ \E mi \in marking :
-          /\ mi[1] = fi
-          /\ doStartTaskTx(t, mi)
-
-      (* Indirect Enablement.
-        A task is indirectly enabled, if it follows an event-based gateway and that
-        gateway is enabled. Additionally, no other successor of the event-based
-        gateway may have been enabled before, as in that case that node has to fire.
-        Structure: _fii_ (gw) fi | fj (t | sibling) *)
-      \/
-        /\ nodeType[predecessor] = GatewayEvent
-        /\ \E fii \in incoming(predecessor) :
-          /\ \E mii \in marking :
-            /\ mii[1] = fii \* predecessor is an enabled event-based gateway
-            /\ ~\E fj \in outgoing(predecessor) : LET sibling == target[fj] IN
-              /\ t /= sibling
-              /\ nodeType[sibling] = EventIntermediate
-              /\ \E history \in mii[2]..timestamp :
-                /\ evaluateIntermediateEvent(sibling, mii, marking, history, oracleValues, messageValues)
-            /\ doStartTaskTx(t, mii)
-
-      (* Conditional Enablement.
-        A task is conditionally enabled if it follows an intermediate catch event
-        that is enabled and can fire.
-        Structure: _fii_ (e) fi (t) *)
-      \/
-        /\ nodeType[predecessor] = EventIntermediate
-        /\ \E fii \in incoming(predecessor) : LET prepredecessor == source[fii] IN
-          \/
-            /\ \E mii \in marking :
-              /\ mii[1] = fii
-              /\ evaluateIntermediateEvent(predecessor, mii, marking, timestamp, oracleValues, messageValues)
-              /\ doStartTaskTx(t, mii)
-
-      (* Indirect Conditional Enablement.
-        A task is indirectly conditionally enabled if it follows an intermediate catch
-        event that is enabled via an event-based gateway and can fire.
-        Additionally, no other successor of the event-based gateway should have been
-        enabled since an earlier point in time than this one. If that is the case, the
-        other event has precedence.
-        Structure: _fiii_ (g) fii (e | presibling) fi (t) *)
-          \/
-            /\ nodeType[prepredecessor] = GatewayEvent
-            /\ \E fiii \in incoming(prepredecessor) :
-              /\ \E miii \in marking :
-                /\ miii[1] = fiii
-                /\ evaluateIntermediateEvent(predecessor, miii, marking, timestamp, oracleValues, messageValues)
-                /\ ~\E fij \in outgoing(prepredecessor) : LET presibling == target[fij] IN
-                  /\ predecessor /= presibling
-                  /\ nodeType[presibling] = EventIntermediate
-                  /\ \E history \in miii[2]..timestamp :
-                    /\ evaluateIntermediateEvent(presibling, miii, marking, history, oracleValues, messageValues)
-                    /\ ~\E history2 \in miii[2]..history :
-                      evaluateIntermediateEvent(predecessor, miii, marking, history2, oracleValues, messageValues)
-                /\ doStartTaskTx(t, miii)
+    (* Event Enablement.
+      A task is event enabled, if it comes after an event that has or would have been able
+      to fire at some point in the past, taking into account deferred choice situations. *)
+    \/
+      /\ nodeType[predecessor(n)] = EventIntermediate
+      /\ executionFlows(predecessor(n)) /= { }
+      /\ doStartTaskTx(n, incoming(predecessor(n)))
 
 startOracleTx ==
   \E o \in Oracles :
     /\ oracleValues[o][2] < timestamp \* only allow one change per timestep
     /\ \E v \in OracleDomain[o] :
       /\ oracleValues' = [ oracleValues EXCEPT ![o] = <<v, timestamp>> ]
-      /\ curTx' = <<timestamp, OracleTx, o, v>>
+      /\ curTx' = [ type |-> OracleTx,
+                    target |-> o,
+                    payload |-> v,
+                    touch |-> {} ]
   /\ UNCHANGED <<marking, messageValues, timestamp>>
 
-(* timestep processing *)
+(* ---------------------- *)
+(* ---    Timestep    --- *)
+(* ---------------------- *)
 timestep ==
   /\ timestamp < MAX_TIMESTAMP
   /\ UNCHANGED <<marking, oracleValues, messageValues>>
-  /\ curTx' = <<timestamp + 1, Empty, Empty, NoPayload>>
+  /\ curTx' = [ type |-> NoTx,
+                target |-> Empty,
+                payload |-> NoPayload,
+                touch |-> {} ]
   /\ timestamp' = timestamp + 1
 
-(* process transactions *)
+(* ---------------------- *)
+(* ---  Transactions  --- *)
+(* ---------------------- *)
 canStartNewTx ==
-  CASE curTx[2] = TaskTx -> Cardinality(enabledNodes) = 0
-    [] curTx[2] = OracleTx -> ~PUSH_ORACLES \/ Cardinality(enabledNodes) = 0
-    [] curTx[2] = DeployTx -> FALSE \* deploy tx ends itself with a timestep
-    [] OTHER -> TRUE
+  CASE curTx.type = TaskTx -> executableNodes = {}
+    [] curTx.type = DeployTx -> executableNodes = {}
+    [] curTx.type = OracleTx -> TRUE
+    [] curTx.type = NoTx -> TRUE
 
 processTaskTx ==
-  /\ curTx[2] = TaskTx
+  /\ curTx.type = TaskTx
   /\ UNCHANGED timestamp
-  /\ \E n \in enabledNodes : executeNode(n)
+  /\ \E n \in executableNodes : executeNode(n)
 
 processOracleTx ==
-  /\ curTx[2] = OracleTx
-  /\ PUSH_ORACLES
+  /\ curTx.type = OracleTx
+  /\ PUSH_ORACLES \* TODO Update PUSH_ORACLES
   /\ UNCHANGED timestamp
-  /\ \E n \in enabledNodes : executeNode(n)
+  /\ \E n \in executableNodes : executeNode(n)
 
 processDeployTx ==
-  /\ curTx[2] = DeployTx
-  /\ IF Cardinality(enabledNodes) > 0
-     THEN /\ UNCHANGED timestamp
-          /\ \E n \in enabledNodes : executeNode(n)
-     ELSE /\ timestep \* end with a timestep
+  /\ curTx.type = DeployTx
+  /\ UNCHANGED timestamp
+  /\ \E n \in executableNodes : executeNode(n)
 
-(* transition system *)
+hasFinished == marking = {}
+
+(* ---------------------- *)
+(* ---  Transitions   --- *)
+(* ---------------------- *)
 Next ==
   /\ ~hasFinished
   /\
@@ -211,7 +237,10 @@ Init ==
          \A t \in Tasks : mv[t] = NoPayload
      }
   /\ timestamp = 0
-  /\ curTx = <<0, DeployTx, Empty, NoPayload>>
+  /\ curTx = [ type |-> DeployTx,
+               target |-> Empty,
+               payload |-> NoPayload,
+               touch |-> { f \in Flows : nodeType[source[f]] = EventStart } ]
 
 Fairness ==
   /\ WF_var(processTaskTx)
@@ -225,15 +254,14 @@ Spec == Init /\ [][Next]_var /\ Fairness
 
 TypeInvariant ==
   /\ marking \subseteq Flows \X Nat
-  /\ \A m1 \in marking : ~\E m2 \in marking : (m1[1] = m2[1] /\ m1[2] /= m2[2]) \* 1-safety
   /\ oracleValues \in [ Oracles -> AllOracleDomains \X (Nat \union { PAST }) ]
   /\ \A o \in Oracles : oracleValues[o][1] \in OracleDomain[o]
   /\ messageValues \in [ Tasks -> AllMessageDomains ]
   /\ \A t \in Tasks : messageValues[t] \in { NoPayload } \union MessageDomain[t]
   /\ timestamp \in 0..MAX_TIMESTAMP
-  /\ curTx \in Nat                                     (* timestamp *)
-            \X TxType                                  (* transaction type *)
-            \X (Tasks \union Oracles \union { Empty }) (* transaction target *)
-            \X PayloadDomain                           (* payload *)
+  /\ curTx \in [ type : TxType,
+                 target : (Tasks \union Oracles \union { Empty }),
+                 payload : PayloadDomain,
+                 touch : SUBSET Flows ]
 
 ================================================================

@@ -18,12 +18,13 @@ function outputMap(map) {
 %>
 ---------------- MODULE Choreography ----------------
 
-EXTENDS TLC, Naturals, Types
+EXTENDS TLC, Integers, Naturals, Types
 
 VARIABLES marking, timestamp, oracleValues, messageValues, curTx
 
 PUSH_ORACLES == FALSE
 MAX_TIMESTAMP == 10
+PAST == -1
 
 Tasks == {
   <%- taskIDs.map(bracketize).join(',\n  ') %>
@@ -73,7 +74,7 @@ PayloadDomain == { NoPayload } \union AllMessageDomains \union AllOracleDomains
 
 (* For these conditions, we can not use the variables directly. We have
    to get them as parameters. *)
-evaluateIntermediateEvent(n, m, ma, ti, or, me) ==
+evaluateEventAt(n, enablement, t, ma, or, me) ==
 <% if (eventConditions.size == 0) { _%>
   FALSE
 <% } else { _%>

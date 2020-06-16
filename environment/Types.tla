@@ -23,10 +23,11 @@ Empty == "-"
 NoPayload == 0
 
 (* transaction types *)
+NoTx == "NoTx"
 TaskTx == "TaskTx"
 DeployTx == "DeployTx"
 OracleTx == "OracleTx"
 
-TxType == { Empty, TaskTx, DeployTx, OracleTx }
+TxType == { NoTx, TaskTx, DeployTx, OracleTx }
 
 ================================================================
