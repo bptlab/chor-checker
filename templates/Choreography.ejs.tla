@@ -74,7 +74,7 @@ PayloadDomain == { NoPayload } \union AllMessageDomains \union AllOracleDomains
 
 (* For these conditions, we can not use the variables directly. We have
    to get them as parameters. *)
-evaluateEventAt(n, enablement, t, ma, or, me) ==
+evaluateEventAt(n, enablement, t) ==
 <% if (eventConditions.size == 0) { _%>
   FALSE
 <% } else { _%>
@@ -82,15 +82,13 @@ evaluateEventAt(n, enablement, t, ma, or, me) ==
     [] OTHER -> FALSE
 <% } _%>
 
-evaluateFlow(f, or, me) ==
+evaluateFlow(f) ==
 <% if (flowConditions.size == 0) { _%>
   FALSE
 <% } else { _%>
   CASE <%- Array.from(flowConditions.entries()).map(e => ['f=' + bracketize(e[0]), e[1]].join(' -> ')).join('\n     [] ') %>
     [] OTHER -> FALSE
 <% } _%>
-
-INSTANCE Semantics
 
 CheckProperty == <%- property %>
 

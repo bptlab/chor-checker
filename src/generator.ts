@@ -122,62 +122,40 @@ export function translateModel(choreo: Choreography, property: string): Object {
 
   // define the substitutions for expressions
   //TODO replace with proper architecture pattern instead of these nested lambdas
-  const literalSubstitution = (short: Boolean = true) => {
-    return literal => {
-      // special values
-      if (literal == 'NO_TRANSACTION') {
-        if (short) {
-          throw 'NO_TRANSACTION can only be referenced from property perspective';
-        } else {
-          return 'curTx[2] = Empty';
-        }
-      }
-      if (literal == 'TIMESTAMP') {
-        if (short) {
-          throw 'TIMESTAMP can only be referenced from property perspective';
-        } else {
-          return 'timestamp';
-        }
-      }
+  const literalSubstitution = literal => {
+    // special values
+    if (literal == 'NO_TRANSACTION') {
+      return 'curTx[2] = Empty';
+    }
+    if (literal == 'TIMESTAMP') {
+      return 'timestamp';
+    }
 
-      // sequence flow markings
-      const flow = flows.find(flow => flow.name == literal);
-      if (flow) {
-        if (short) {
-          return `\\E m \\in ma : m[1] = "${ flowMap.get(flow) }"`;
-        } else {
-          return `\\E m \\in marking : m[1] = "${ flowMap.get(flow) }"`;
-        }
-      }
+    // sequence flow markings
+    const flow = flows.find(flow => flow.name == literal);
+    if (flow) {
+      return `\\E m \\in marking : m[1] = "${ flowMap.get(flow) }"`;
+    }
 
-      // oracle values
-      if (oracles.find(oracle => oracle.name == literal)) {
-        if (short) {
-          return `or["${ literal }"][1]`;
-        } else {
-          return `oracleValues["${ literal }"][1]`;
-        }
-      };
+    // oracle values
+    if (oracles.find(oracle => oracle.name == literal)) {
+      return `oracleValues["${ literal }"][1]`;
+    };
   
-      // message values
-      const task = tasks.find(task => {
-        const messageFlow = task.messageFlowRef.find(messageFlow => messageFlow.sourceRef == task.initiatingParticipantRef);
-        if (messageFlow) {
-          const message = messageFlow.messageRef;
-          if (message && message.name) {
-            if (message.name == literal) {
-              return true;
-            }
+    // message values
+    const task = tasks.find(task => {
+      const messageFlow = task.messageFlowRef.find(messageFlow => messageFlow.sourceRef == task.initiatingParticipantRef);
+      if (messageFlow) {
+        const message = messageFlow.messageRef;
+        if (message && message.name) {
+          if (message.name == literal) {
+            return true;
           }
         }
-      });
-      if (task) {
-        if (short) {
-          return 'me["' + nodeMap.get(task) + '"]';
-        } else {
-          return 'messageValues["' + nodeMap.get(task) + '"]';
-        }
       }
+    });
+    if (task) {
+      return 'messageValues["' + nodeMap.get(task) + '"]';
     }
   }
 
@@ -197,7 +175,7 @@ export function translateModel(choreo: Choreography, property: string): Object {
         if (outgoing.conditionExpression && outgoing.conditionExpression.body) {
           flowConditions.set(
             flowMap.get(outgoing),
-            transpileExpression(outgoing.conditionExpression.body, literalSubstitution())
+            transpileExpression(outgoing.conditionExpression.body, literalSubstitution)
           );
         }
       });
@@ -253,7 +231,7 @@ export function translateModel(choreo: Choreography, property: string): Object {
       const expression = (<ConditionalEventDefinition> definition).condition.body;
       eventConditions.set(
         nodeMap.get(event),
-        transpileExpression(expression, literalSubstitution())
+        transpileExpression(expression, literalSubstitution)
       );
     } else if (is('bpmn:SignalEventDefinition')(definition)) {
       const signal = (<SignalEventDefinition> definition).signalRef;
@@ -273,7 +251,7 @@ export function translateModel(choreo: Choreography, property: string): Object {
 
   // put all that stuff into the template
   return {
-    property: transpileExpression(property, literalSubstitution(false)),
+    property: transpileExpression(property, literalSubstitution),
     taskIDs,
     otherIDs,
     flowIDs,

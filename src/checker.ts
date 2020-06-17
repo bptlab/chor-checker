@@ -27,7 +27,7 @@ export async function checkModel(xml: string, property: string): Promise<Object>
     // now the interesting part: running TLC
     let buffer: Buffer;
     try {
-      buffer = child.execSync('java -classpath tla2tools.jar tlc2.TLC -deadlock -nowarning Choreography', { cwd: folder });
+      buffer = child.execSync('java -classpath tla2tools.jar tlc2.TLC -deadlock -nowarning Semantics', { cwd: folder });
     } catch (error) {
       buffer = Buffer.concat([error.stdout, error.stderr]);
     }

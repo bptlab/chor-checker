@@ -1,9 +1,30 @@
 ---------------- MODULE Semantics ----------------
 
-EXTENDS TLC, FiniteSets, Integers, Naturals, Types, Definitions
+EXTENDS TLC, FiniteSets, Integers, Naturals, Types
 
 VARIABLES marking, oracleValues, messageValues, timestamp, curTx
 var == <<marking, oracleValues, messageValues, timestamp, curTx>>
+
+LOCAL INSTANCE Choreography
+
+(* ---------------------- *)
+(* ---    Helpers     --- *)
+(* ---------------------- *)
+
+(* There should always be exactly one incoming and outgoing sequence flow.
+   These operators should not be called on nodes where this is not guaranteed. *)
+incoming(n) == CHOOSE f \in Flows : target[f] = n
+outgoing(n) == CHOOSE f \in Flows : source[f] = n
+
+successor(n) == target[outgoing(n)]
+predecessor(n) == source[incoming(n)]
+
+(* Siblings are all nodes which follow the same event-based gateway.
+   There are no siblings if the node does not follow such a gateway. *)
+siblings[n \in Nodes] ==
+  IF nodeType[predecessor(n)] = GatewayEvent
+  THEN { target[f] : f \in { ff \in Flows : source[ff] = predecessor(n) } } \ { n }
+  ELSE { }
 
 (* ---------------------- *)
 (* --- Node Execution --- *)
@@ -35,7 +56,7 @@ executeGatewayParallel(n) ==
   /\ modifyMarking({ f \in Flows : target[f] = n }, { f \in Flows : source[f] = n })
 
 executeGatewayExclusive(n) ==
-  /\ LET enabledFlows == { f \in Flows : source[f] = n /\ evaluateFlow(f, oracleValues, messageValues) } IN
+  /\ LET enabledFlows == { f \in Flows : source[f] = n /\ evaluateFlow(f) } IN
     IF enabledFlows /= {} THEN
       /\ \E f \in enabledFlows :
         /\ modifyMarking({ ff \in Flows : target[ff] = n }, { f })
@@ -49,7 +70,7 @@ hasToken(f) == \E m \in marking : m[1] = f
 
 triggerTimeAfter(n, t) ==
   CASE nodeType[n] = EventIntermediate ->
-        LET triggerTimes == { tt \in t..timestamp : evaluateEventAt(n, t, tt, marking, oracleValues, messageValues) } IN
+        LET triggerTimes == { tt \in t..timestamp : evaluateEventAt(n, t, tt) } IN
           IF triggerTimes = {}
           THEN PAST
           ELSE CHOOSE tt \in triggerTimes : \A ttt \in triggerTimes : tt <= ttt
