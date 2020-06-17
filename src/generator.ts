@@ -125,10 +125,13 @@ export function translateModel(choreo: Choreography, property: string): Object {
   const literalSubstitution = literal => {
     // special values
     if (literal == 'NO_TRANSACTION') {
-      return 'curTx[2] = Empty';
+      return 'curTx.type = Empty';
     }
     if (literal == 'TIMESTAMP') {
       return 'timestamp';
+    }
+    if (literal == 'FINISHED') {
+      return 'marking = {}';
     }
 
     // sequence flow markings
