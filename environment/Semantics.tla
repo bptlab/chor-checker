@@ -2,52 +2,6 @@
 
 EXTENDS TLC, FiniteSets, Integers, Naturals, Types, Definitions
 
-(*
-- GOAL
-  * Show that we do not need to put trust into anyone?
-  * Prove that the performance is good?
-  * Under which circumstances some things can not happen?
-  * Low-level effects of blockchain protocols?
-    > Miners can always choose not to include a transaction
-
-- MODEL
-  * Transaction Pool
-  * Which elements do transactions target?
-    > Tasks?
-    > Elements?
-  * External Data Sources, with symbolic abstraction
-    > Request data?
-    > Do they update all the time?
-    > Only model interaction with the process?
-  * Reduce to Time Domain, so there are no leaps in timestamps
-
-- OPERATORS
-  * Should-have-fired
-  * Has-fired
-  * => G(! should-have-fired /\ !has-fired)
-
-- Timers
-  * Block timestamp
-  * Block number
-  * Parameter
-  * On-chain oracle
-  * Off-chain oracle
-- Conditionals
-  * Traditional oracles & sampling strategies
-  * New oracles (history, pub/sub)
-  * Global/local token propagation
-
-Optimization:
-  - allow oracles to change only once per timestep
-
-Assumptions:
-  - 1-safe
-  - Every element has exactly one incoming and one outgoing sequence flow
-    > Except gateways, which have at least one each
-    > Start events, which have no incoming
-    > End events, which have no outgoing
-*)
-
 VARIABLES marking, oracleValues, messageValues, timestamp, curTx
 var == <<marking, oracleValues, messageValues, timestamp, curTx>>
 
