@@ -6,7 +6,7 @@ Compile using:
 */
 grammar TLAplus;
 
-def : (AND variable)+ ;
+def : variable (AND variable)* ;
 variable : IDENTIFIER EQUALS value ;
 value : tuple
       | mapping
