@@ -14,7 +14,9 @@ import {
   ConditionalEventDefinition,
   ChoreographyTask,
   TimerEventDefinition,
-  SignalEventDefinition
+  SignalEventDefinition,
+  Process,
+  Task
 } from 'bpmn-moddle';
 import { is, getModel } from './helpers';
 import { transpileExpression } from './parser/expression';
@@ -26,7 +28,7 @@ const template = ejs.compile(
 
 // some definitions
 const SUPPORTED_FLOW_NODES : string[] = [
-  'bpmn:ChoreographyTask',
+  'bpmn:Task',
   'bpmn:ParallelGateway',
   'bpmn:ExclusiveGateway',
   'bpmn:EventBasedGateway',
@@ -41,11 +43,11 @@ export function generateTLA(xml: string, property: string): Promise<string> {
   });
 }
 
-export function translateModel(choreo: Choreography, property: string): Object {
+export function translateModel(choreo: Process, property: string): Object {
   // collect relevant elements
   let nodes: FlowNode[] = <FlowNode[]> choreo.flowElements.filter(is(...SUPPORTED_FLOW_NODES));
   let flows: SequenceFlow[] = <SequenceFlow[]> choreo.flowElements.filter(is('bpmn:SequenceFlow'));
-  let tasks = <ChoreographyTask[]> nodes.filter(is('bpmn:ChoreographyTask'));
+  let tasks = <Task[]> nodes.filter(is('bpmn:Task'));
 
   // assign more readable IDs
   let nodeMap: Map<FlowNode, string> = new Map();
@@ -66,15 +68,11 @@ export function translateModel(choreo: Choreography, property: string): Object {
   let source: Map<string, string> = new Map();
   let target: Map<string, string> = new Map();
   let nodeType: Map<string, string> = new Map();
-  let defaultFlow: Map<string, string> = new Map();
-  let flowConditions: Map<string, string> = new Map();
-  let eventConditions: Map<string, string> = new Map();
-  let oracles: Array<any> = [];
-  let messageDomains: Map<string, Array<number>> = new Map();
+  let isSync: Map<string, string> = new Map();
 
   // IDs
   nodes.forEach(node => {
-    if (is('bpmn:ChoreographyTask')(node)) {
+    if (is('bpmn:Task')(node)) {
       taskIDs.push(nodeMap.get(node));
     } else {
       otherIDs.push(nodeMap.get(node));
@@ -84,52 +82,10 @@ export function translateModel(choreo: Choreography, property: string): Object {
     flowIDs.push(flowMap.get(flow));
   })
 
-  // determine message domains
-  // we assume each task is assigned to exactly one message
-  let messageToTask: Map<string, string> = new Map();
-  tasks.forEach(task => {
-    let domain;
-    const message = task.messageFlowRef[0].messageRef;
-    if (message) {
-      const itemDefinition = message.itemRef;
-      if (itemDefinition) {
-        try {
-          domain = JSON.parse(itemDefinition.structureRef);
-        } catch (error) {
-          // just use the default domain
-          console.warn('Could not parse ItemDefinition', message, itemDefinition);
-        }
-      }
-
-      // also calculate the mapping from message name to task ID
-      if (message.name) {
-        messageToTask.set(message.name, nodeMap.get(task));
-      }
-    }
-    if (!domain) {
-      domain = [ 0 ];
-    }
-    messageDomains.set(nodeMap.get(task), domain);
-  });
-
-  // check if we have oracles involved
-  if (choreo.documentation) {
-    const doc = JSON.parse(choreo.documentation.map(d => d.text).join() || '{}');
-    if (doc && doc.oracles) {
-      oracles = doc.oracles;
-    }
-  }
-
   // define the substitutions for expressions
   //TODO replace with proper architecture pattern instead of these nested lambdas
   const literalSubstitution = literal => {
     // special values
-    if (literal == 'NO_TRANSACTION') {
-      return 'curTx.type = Empty';
-    }
-    if (literal == 'TIMESTAMP') {
-      return 'timestamp';
-    }
     if (literal == 'FINISHED') {
       return 'marking = {}';
     }
@@ -137,28 +93,7 @@ export function translateModel(choreo: Choreography, property: string): Object {
     // sequence flow markings
     const flow = flows.find(flow => flow.name == literal);
     if (flow) {
-      return `\\E m \\in marking : m[1] = "${ flowMap.get(flow) }"`;
-    }
-
-    // oracle values
-    if (oracles.find(oracle => oracle.name == literal)) {
-      return `oracleValues["${ literal }"][1]`;
-    };
-  
-    // message values
-    const task = tasks.find(task => {
-      const messageFlow = task.messageFlowRef.find(messageFlow => messageFlow.sourceRef == task.initiatingParticipantRef);
-      if (messageFlow) {
-        const message = messageFlow.messageRef;
-        if (message && message.name) {
-          if (message.name == literal) {
-            return true;
-          }
-        }
-      }
-    });
-    if (task) {
-      return 'messageValues["' + nodeMap.get(task) + '"]';
+      return `"${ flowMap.get(flow) }" \\in marking`;
     }
   }
 
@@ -167,89 +102,33 @@ export function translateModel(choreo: Choreography, property: string): Object {
     source.set(flowMap.get(sequenceFlow), nodeMap.get(sequenceFlow.sourceRef));
     target.set(flowMap.get(sequenceFlow), nodeMap.get(sequenceFlow.targetRef));
   });
-  
-  // build default flow relation and node types
+
+  // node types
   nodes.forEach(flowNode => {
-    if (is('bpmn:ExclusiveGateway')(flowNode)) {
-      let exclusiveGateway = <ExclusiveGateway> flowNode;
-
-      // conditions
-      exclusiveGateway.outgoing.forEach(outgoing => {
-        if (outgoing.conditionExpression && outgoing.conditionExpression.body) {
-          flowConditions.set(
-            flowMap.get(outgoing),
-            transpileExpression(outgoing.conditionExpression.body, literalSubstitution)
-          );
-        }
-      });
-
-      // default flow
-      let flow: SequenceFlow;
-      if (exclusiveGateway.default) {
-        flow = exclusiveGateway.default;
-      } else {
-        // if no default flow was defined, just pick any --- this is just to
-        // simplify the TLA code later and has no consequences otherwise since
-        // we assume that a default flow is defined via the well-formedness
-        // property of the choreography
-        flow = exclusiveGateway.outgoing[0];
-      }
-      defaultFlow.set(nodeMap.get(exclusiveGateway), flowMap.get(flow));
-    }
-
     let type = '';
-    if (is('bpmn:ChoreographyTask')(flowNode)) {
+    if (is('bpmn:Task')(flowNode)) {
       type = 'Task';
     } else if (is('bpmn:ParallelGateway')(flowNode)) {
-      type = 'GatewayParallel';
+      type = 'ParallelGateway';
     } else if (is('bpmn:ExclusiveGateway')(flowNode)) {
-      type = 'GatewayExclusive';
+      type = 'ExclusiveGateway';
     } else if (is('bpmn:EventBasedGateway')(flowNode)) {
-      type = 'GatewayEvent';
+      type = 'EventBasedGateway';
     } else if (is('bpmn:StartEvent')(flowNode)) {
-      type = 'EventStart';
+      type = 'StartEvent';
     } else if (is('bpmn:IntermediateCatchEvent')(flowNode)) {
-      type = 'EventIntermediate';
+      type = 'IntermediateCatchEvent';
     } else if (is('bpmn:EndEvent')(flowNode)) {
-      type = 'EventEnd';
+      type = 'EndEvent';
     }
     nodeType.set(nodeMap.get(flowNode), type);
   });
 
-  // translate intermediate catch events
-  nodes.filter(is('bpmn:IntermediateCatchEvent')).forEach(flowNode => {
-    const event = <IntermediateCatchEvent> flowNode;
-    const definition = event.eventDefinitions[0];
-
-    if (is('bpmn:TimerEventDefinition')(definition)) {
-      const timerDef = (<TimerEventDefinition> definition);
-      let expression;
-      if (timerDef.timeDuration) {
-        expression = `(t >= enablement + ${ timerDef.timeDuration.body })`;
-      } else if (timerDef.timeDate) {
-        expression = `(t >= ${ timerDef.timeDate.body })`;
-      }
-      eventConditions.set(nodeMap.get(event), expression);
-    } else if (is('bpmn:ConditionalEventDefinition')(definition)) {
-      const expression = (<ConditionalEventDefinition> definition).condition.body;
-      eventConditions.set(
-        nodeMap.get(event),
-        transpileExpression(expression, literalSubstitution)
-      );
-    } else if (is('bpmn:SignalEventDefinition')(definition)) {
-      const signal = (<SignalEventDefinition> definition).signalRef;
-
-      // add an oracle for the signal if not already done
-      if (!oracles.find(oracle => oracle.name == signal.name)) {
-        oracles.push({ name: signal.name, values: [0] });
-      }
-
-      // add a timed condition for this event
-      eventConditions.set(
-        nodeMap.get(event),
-        `(enablement <= or["${ signal.name }"][2])`
-      );
-    }
+  // events sync/async
+  nodes.forEach(flowNode => {
+    if (is('bpmn:IntermediateCatchEvent')(flowNode)) {
+      isSync.set(nodeMap.get(flowNode), 'FALSE');
+    }    
   });
 
   // put all that stuff into the template
@@ -261,10 +140,6 @@ export function translateModel(choreo: Choreography, property: string): Object {
     source,
     target,
     nodeType,
-    defaultFlow,
-    flowConditions,
-    eventConditions,
-    oracles,
-    messageDomains
+    isSync
   };
 }

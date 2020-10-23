@@ -2,32 +2,16 @@
 
 (* choreography types *)
 Task == "Task"
-GatewayExclusive == "GatewayExclusive"
-GatewayParallel == "GatewayParallel"
-GatewayEvent == "GatewayEvent"
-EventStart == "EventStart"
-EventEnd == "EventEnd"
-EventIntermediate == "EventIntermediate"
+ParallelGateway == "ParallelGateway"
+ExclusiveGateway == "ExclusiveGateway"
+EventBasedGateway == "EventBasedGateway"
+StartEvent == "StartEvent"
+IntermediateCatchEvent == "IntermediateCatchEvent"
+EndEvent == "EndEvent"
 
-FlowNormal == "FlowNormal"
-FlowConditional == "FlowConditional"
-FlowDefault == "FlowDefault"
-
-GatewayType == { GatewayExclusive, GatewayParallel, GatewayEvent }
-EventType == { EventStart, EventIntermediate, EventEnd }
-FlowType == { FlowNormal, FlowConditional, FlowDefault }
+GatewayType == { ParallelGateway, ExclusiveGateway, EventBasedGateway }
+EventType == { StartEvent, IntermediateCatchEvent, EndEvent }
 
 NodeType == { Task } \union GatewayType \union EventType
-
-Empty == "-"
-NoPayload == 0
-
-(* transaction types *)
-NoTx == "NoTx"
-TaskTx == "TaskTx"
-DeployTx == "DeployTx"
-OracleTx == "OracleTx"
-
-TxType == { NoTx, TaskTx, DeployTx, OracleTx }
 
 ================================================================
