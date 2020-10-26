@@ -33,14 +33,14 @@ MegaCartesianProduct(SetOfSetsOfMarkings) ==
 
 (* There should always be exactly one incoming and outgoing sequence flow.
    These operators should not be called on nodes where this is not guaranteed. *)
-incoming(n) == CHOOSE f \in Flows : target[f] = n
+\* incoming(n) == CHOOSE f \in Flows : target[f] = n
 outgoing(n) == CHOOSE f \in Flows : source[f] = n
 
 Incoming(n) == { f \in Flows : target[f] = n }
 Outgoing(n) == { f \in Flows : source[f] = n }
 
-successor(n) == target[outgoing(n)]
-predecessor(n) == source[incoming(n)]
+\* successor(n) == target[outgoing(n)]
+\* predecessor(n) == source[incoming(n)]
 
 Successors(n) == { m \in Nodes : \E f \in Flows : source[f] = n /\ target[f] = m }
 Predecessors(n) == { m \in Nodes : \E f \in Flows : source[f] = m /\ target[f] = n }
@@ -48,12 +48,12 @@ Predecessors(n) == { m \in Nodes : \E f \in Flows : source[f] = m /\ target[f] =
 Siblings[n \in Nodes] == (UNION { Successors(nn) : nn \in { nnn \in Predecessors(n) : nodeType[nnn] = EventBasedGateway } } ) \ { n }
 
 isEnabled(M, n) ==
-  /\ nodeType[n] \in { BlockingTask, IntermediateCatchEvent }
-  /\ incoming(n) \in M
+  \/ n \in M
+  \/ \E f \in Incoming(n) : f \in M
 
 RECURSIVE FlipMarkings(_, _)
 FlipMarkings(M, f) == LET n == target[f] IN
-  IF nodeType[n] = BlockingTask THEN {{ f }}
+  IF nodeType[n] = BlockingTask THEN {{ n }}
   ELSE IF nodeType[n] = NonBlockingTask THEN FlipMarkings(M, outgoing(n))
   ELSE IF nodeType[n] = ExclusiveGateway THEN UNION { FlipMarkings(M, ff) : ff \in Outgoing(n) }
   ELSE IF nodeType[n] = ParallelGateway THEN (
@@ -85,11 +85,14 @@ triggerNodes(N, M) ==
   ELSE
     LET
       n == CHOOSE nn \in N : TRUE
-      Consume == Incoming(n) \union UNION { Incoming(nn) : nn \in Siblings[n] }
+      Consume ==
+        IF nodeType[n] \in TaskType
+        THEN { n }
+        ELSE Incoming(n) \union UNION { Incoming(nn) : nn \in Siblings[n] }
     IN
       IF Cardinality(N) = 1 THEN { F \union Consume : F \in FlipMarkings(M, outgoing(n)) }
       ELSE
-        LET 
+        LET
           RecursiveFlips == triggerNodes(N \ { n }, M)
           ThisFlips(F) == FlipMarkings(SymmetricDifference(M, F), outgoing(n))
         IN
@@ -113,6 +116,6 @@ Fairness ==
 Spec == Init /\ [][Next]_var /\ Fairness
 
 TypeInvariant ==
-  /\ marking \subseteq Flows
+  /\ marking \subseteq Flows \union Tasks
 
 ================================================================
