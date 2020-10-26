@@ -1,17 +1,22 @@
 ---------------- MODULE Types ----------------
 
-(* choreography types *)
-Task == "Task"
+(* Tasks *)
+BlockingTask == "BlockingTask"
+NonBlockingTask == "NonBlockingTask"
+TaskType == { BlockingTask, NonBlockingTask }
+
+(* Gateways *)
 ParallelGateway == "ParallelGateway"
 ExclusiveGateway == "ExclusiveGateway"
 EventBasedGateway == "EventBasedGateway"
+GatewayType == { ParallelGateway, ExclusiveGateway, EventBasedGateway }
+
+(* Events *)
 StartEvent == "StartEvent"
 IntermediateCatchEvent == "IntermediateCatchEvent"
 EndEvent == "EndEvent"
-
-GatewayType == { ParallelGateway, ExclusiveGateway, EventBasedGateway }
 EventType == { StartEvent, IntermediateCatchEvent, EndEvent }
 
-NodeType == { Task } \union GatewayType \union EventType
+NodeType == TaskType \union GatewayType \union EventType
 
 ================================================================

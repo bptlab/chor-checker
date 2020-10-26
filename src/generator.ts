@@ -69,6 +69,7 @@ export function translateModel(choreo: Process, property: string): Object {
   let target: Map<string, string> = new Map();
   let nodeType: Map<string, string> = new Map();
   let isSync: Map<string, string> = new Map();
+  let isBlocking: Map<string, string> = new Map();
 
   // IDs
   nodes.forEach(node => {
@@ -106,8 +107,10 @@ export function translateModel(choreo: Process, property: string): Object {
   // node types
   nodes.forEach(flowNode => {
     let type = '';
-    if (is('bpmn:Task')(flowNode)) {
-      type = 'Task';
+    if (is('bpmn:ManualTask', 'bpmn:ScriptTask', 'bpmn:ReceiveTask')(flowNode)) {
+      type = 'NonBlockingTask';
+    } else if (is('bpmn:Task')(flowNode)) {
+      type = 'BlockingTask';
     } else if (is('bpmn:ParallelGateway')(flowNode)) {
       type = 'ParallelGateway';
     } else if (is('bpmn:ExclusiveGateway')(flowNode)) {

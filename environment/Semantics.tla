@@ -48,12 +48,13 @@ Predecessors(n) == { m \in Nodes : \E f \in Flows : source[f] = m /\ target[f] =
 Siblings[n \in Nodes] == (UNION { Successors(nn) : nn \in { nnn \in Predecessors(n) : nodeType[nnn] = EventBasedGateway } } ) \ { n }
 
 isEnabled(M, n) ==
-  /\ nodeType[n] \in { Task, IntermediateCatchEvent }
+  /\ nodeType[n] \in { BlockingTask, IntermediateCatchEvent }
   /\ incoming(n) \in M
 
 RECURSIVE FlipMarkings(_, _)
 FlipMarkings(M, f) == LET n == target[f] IN
-  IF nodeType[target[f]] = Task THEN {{ f }}
+  IF nodeType[n] = BlockingTask THEN {{ f }}
+  ELSE IF nodeType[n] = NonBlockingTask THEN FlipMarkings(M, outgoing(n))
   ELSE IF nodeType[n] = ExclusiveGateway THEN UNION { FlipMarkings(M, ff) : ff \in Outgoing(n) }
   ELSE IF nodeType[n] = ParallelGateway THEN (
     IF \E ff \in Flows: (ff /= f /\ target[ff] = n /\ ff \notin M)
