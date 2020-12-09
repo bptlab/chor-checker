@@ -1,24 +1,24 @@
 /**
  * Generator components.
- * Takes as an input a BPMN choreography diagram and outputs a
+ * Takes as an input a BPMN collaboration diagram and outputs a
  * TLA+ specification for it.
  */
 import fs from 'fs-extra';
 import ejs from 'ejs';
-import {
-  Choreography,
+import BpmnModdle, {
   SequenceFlow,
-  ExclusiveGateway,
   FlowNode,
   IntermediateCatchEvent,
   ConditionalEventDefinition,
-  ChoreographyTask,
   TimerEventDefinition,
   SignalEventDefinition,
   Process,
-  Task
+  Task,
+  Collaboration,
+  MessageFlow,
+  SendTask
 } from 'bpmn-moddle';
-import { is, getModel } from './helpers';
+import { is } from './helpers';
 import { transpileExpression } from './parser/expression';
 
 // prepare the TLA template
@@ -28,7 +28,9 @@ const template = ejs.compile(
 
 // some definitions
 const SUPPORTED_FLOW_NODES : string[] = [
-  'bpmn:Task',
+  'bpmn:UserTask',
+  'bpmn:ScriptTask',
+  'bpmn:SendTask',
   'bpmn:ParallelGateway',
   'bpmn:ExclusiveGateway',
   'bpmn:EventBasedGateway',
@@ -37,17 +39,25 @@ const SUPPORTED_FLOW_NODES : string[] = [
   'bpmn:IntermediateCatchEvent'
 ];
 
-export function generateTLA(xml: string, property: string): Promise<string> {
-  return getModel(xml).then(choreo => {
-    return template(translateModel(choreo, property));
-  });
-}
+export async function generateTLA(xml: string, property: string): Promise<Object> {
+  const moddle = new BpmnModdle();
+  // @ts-ignore bpmn-moddle types are not yet updated for promises
+  const definitions : Definitions = (await moddle.fromXML(xml)).rootElement;
 
-export function translateModel(choreo: Process, property: string): Object {
+  const processes = <Process[]> definitions.rootElements.filter(is('bpmn:Process'));
+  if (!processes || processes.length == 0) {
+    throw 'could not find a choreography instance';
+  }
+
+  const collabs = <Collaboration[]> definitions.rootElements.filter(is('bpmn:Collaboration'));
+  let messageFlows : MessageFlow[] = [];
+  if (collabs) {
+    messageFlows = collabs.map(c => c.messageFlows).flat();
+  }
+
   // collect relevant elements
-  let nodes: FlowNode[] = <FlowNode[]> choreo.flowElements.filter(is(...SUPPORTED_FLOW_NODES));
-  let flows: SequenceFlow[] = <SequenceFlow[]> choreo.flowElements.filter(is('bpmn:SequenceFlow'));
-  let tasks = <Task[]> nodes.filter(is('bpmn:Task'));
+  let nodes: FlowNode[] = <FlowNode[]> processes.map(p => p.flowElements.filter(is(...SUPPORTED_FLOW_NODES))).flat();
+  let flows: SequenceFlow[] = <SequenceFlow[]> processes.map(p => p.flowElements.filter(is('bpmn:SequenceFlow'))).flat();
 
   // assign more readable IDs
   let nodeMap: Map<FlowNode, string> = new Map();
@@ -62,22 +72,18 @@ export function translateModel(choreo: Process, property: string): Object {
   // build up structures we need for the template
   // we do not want to do much processing in the template, so this includes
   // some rather basic transformations
-  let taskIDs: string[] = [];
-  let otherIDs: string[] = [];
+  let nodeIDs: string[] = [];
   let flowIDs: string[] = [];
   let source: Map<string, string> = new Map();
   let target: Map<string, string> = new Map();
+  let messageFlowTarget: Map<string, string> = new Map();
   let nodeType: Map<string, string> = new Map();
   let isSync: Map<string, string> = new Map();
   let isBlocking: Map<string, string> = new Map();
 
   // IDs
   nodes.forEach(node => {
-    if (is('bpmn:Task')(node)) {
-      taskIDs.push(nodeMap.get(node));
-    } else {
-      otherIDs.push(nodeMap.get(node));
-    };
+    nodeIDs.push(nodeMap.get(node));
   })
   flows.forEach(flow => {
     flowIDs.push(flowMap.get(flow));
@@ -104,26 +110,52 @@ export function translateModel(choreo: Process, property: string): Object {
     target.set(flowMap.get(sequenceFlow), nodeMap.get(sequenceFlow.targetRef));
   });
 
+  // message flows
+  messageFlows.forEach(m => {
+    if (is('bpmn:SendTask')(m.sourceRef) && is('bpmn:IntermediateCatchEvent')(m.targetRef)) {
+      messageFlowTarget.set(
+        nodeMap.get(<SendTask> m.sourceRef),
+        nodeMap.get(<IntermediateCatchEvent> m.targetRef)
+      );
+    }
+  });
+
   // node types
   nodes.forEach(flowNode => {
     let type = '';
-    if (is('bpmn:ManualTask', 'bpmn:ScriptTask', 'bpmn:ReceiveTask')(flowNode)) {
-      type = 'NonBlockingTask';
-    } else if (is('bpmn:Task')(flowNode)) {
-      type = 'BlockingTask';
+
+    if (is('bpmn:UserTask')(flowNode)) {
+      type = 'TaskUser';
+    } else if (is('bpmn:ScriptTask')(flowNode)) {
+      type = 'TaskScript';
+    } else if (is('bpmn:SendTask')(flowNode)) {
+      type = 'TaskSend';
     } else if (is('bpmn:ParallelGateway')(flowNode)) {
-      type = 'ParallelGateway';
+      type = 'GateParallel';
     } else if (is('bpmn:ExclusiveGateway')(flowNode)) {
-      type = 'ExclusiveGateway';
+      type = 'GateExclusive';
     } else if (is('bpmn:EventBasedGateway')(flowNode)) {
-      type = 'EventBasedGateway';
+      type = 'GateDeferred';
     } else if (is('bpmn:StartEvent')(flowNode)) {
-      type = 'StartEvent';
-    } else if (is('bpmn:IntermediateCatchEvent')(flowNode)) {
-      type = 'IntermediateCatchEvent';
+      type = 'EventNone';
     } else if (is('bpmn:EndEvent')(flowNode)) {
-      type = 'EndEvent';
+      type = 'EventNone';
+    } else if (is('bpmn:IntermediateCatchEvent')(flowNode)) {
+      const ev : IntermediateCatchEvent = <IntermediateCatchEvent> flowNode;
+      if (ev.eventDefinitions.length > 0) {
+        const def = ev.eventDefinitions[0];
+        if (is('bpmn:TimerEventDefinition')(def)) {
+          type = 'EventTimer';
+        } else if (is('bpmn:ConditionalEventDefinition')(def)) {
+          type = 'EventCond';
+        } else if (is('bpmn:MessageEventDefinition')(def)) {
+          type = 'EventReceive';
+        } else {
+          throw 'Unsupported event ' + flowNode.id;
+        }
+      }
     }
+
     nodeType.set(nodeMap.get(flowNode), type);
   });
 
@@ -135,14 +167,14 @@ export function translateModel(choreo: Process, property: string): Object {
   });
 
   // put all that stuff into the template
-  return {
+  return template({
     property: transpileExpression(property, literalSubstitution),
-    taskIDs,
-    otherIDs,
+    nodeIDs,
     flowIDs,
     source,
     target,
+    messageFlowTarget,
     nodeType,
     isSync
-  };
+  });
 }
