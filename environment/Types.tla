@@ -1,21 +1,23 @@
 ---------------- MODULE Types ----------------
 
 (* Tasks *)
-BlockingTask == "BlockingTask"
-NonBlockingTask == "NonBlockingTask"
-TaskType == { BlockingTask, NonBlockingTask }
+TaskUser == "TaskUser"
+TaskSend == "TaskSend"
+TaskScript == "TaskScript"
+TaskType == { TaskUser, TaskSend, TaskScript }
 
 (* Gateways *)
-ParallelGateway == "ParallelGateway"
-ExclusiveGateway == "ExclusiveGateway"
-EventBasedGateway == "EventBasedGateway"
-GatewayType == { ParallelGateway, ExclusiveGateway, EventBasedGateway }
+GateExclusive == "GateExclusive"
+GateParallel == "GateParallel"
+GateDeferred == "GateDeferred"
+GatewayType == { GateExclusive, GateParallel, GateDeferred }
 
 (* Events *)
-StartEvent == "StartEvent"
-IntermediateCatchEvent == "IntermediateCatchEvent"
-EndEvent == "EndEvent"
-EventType == { StartEvent, IntermediateCatchEvent, EndEvent }
+EventNone == "EventNone"
+EventReceive == "EventReceive"
+EventTimer == "EventTimer"
+EventCond == "EventCond"
+EventType == { EventNone, EventReceive, EventTimer, EventCond }
 
 NodeType == TaskType \union GatewayType \union EventType
 

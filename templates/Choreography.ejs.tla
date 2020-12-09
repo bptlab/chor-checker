@@ -20,17 +20,13 @@ function outputMap(map) {
 
 EXTENDS TLC, Integers, Naturals, Types
 
-VARIABLES marking
+VARIABLES time, marking, age
 
 \* PUSH_ORACLES == FALSE
 
-Tasks == {
-  <%- taskIDs.map(bracketize).join(',\n  ') %>
-}
-
 Nodes == {
-  <%- otherIDs.map(bracketize).join(',\n  ') %>
-} \union Tasks
+  <%- nodeIDs.map(bracketize).join(',\n  ') %>
+}
 
 Flows == {
   <%- flowIDs.map(bracketize).join(',\n  ') %>
@@ -41,6 +37,9 @@ source ==
 
 target ==
    <%- outputMap(target) %>
+
+messageFlowTarget ==
+   <%- outputMap(messageFlowTarget) %>
 
 nodeType ==
    <%- nodeType.size == 0 ? '[ i \\in {} |-> {}]' :
