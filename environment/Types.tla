@@ -13,11 +13,13 @@ GateDeferred == "GateDeferred"
 GatewayType == { GateExclusive, GateParallel, GateDeferred }
 
 (* Events *)
-EventNone == "EventNone"
+EventStart == "EventStart"
+EventEnd == "EventEnd"
 EventReceive == "EventReceive"
 EventTimer == "EventTimer"
 EventCond == "EventCond"
-EventType == { EventNone, EventReceive, EventTimer, EventCond }
+EventExternalType == { EventReceive, EventTimer, EventCond }
+EventType == { EventStart, EventEnd } \union EventExternalType
 
 NodeType == TaskType \union GatewayType \union EventType
 

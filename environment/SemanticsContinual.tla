@@ -10,6 +10,8 @@ LOCAL INSTANCE Choreography
 incoming(n) == CHOOSE f \in Flows : target[f] = n
 outgoing(n) == CHOOSE f \in Flows : source[f] = n
 
+predecessor(n) == source[incoming(n)]
+
 Incoming(n) == { f \in Flows : target[f] = n }
 Outgoing(n) == { f \in Flows : source[f] = n }
 
@@ -18,34 +20,21 @@ Predecessors(n) == { m \in Nodes : \E f \in Flows : source[f] = m /\ target[f] =
 
 Siblings[n \in Nodes] == (UNION { Successors(nn) : nn \in { nnn \in Predecessors(n) : nodeType[nnn] = GateDeferred } } ) \ { n }
 
-detect(n, ta, tc) ==
-  CASE nodeType[n] = EventTimer -> ta + 2 < tc
-    [] OTHER -> FALSE
+isConnectedReceiveEvent(n) ==
+  /\ nodeType[n] = EventReceive
+  /\ \E nn \in Nodes :
+    /\ nodeType[nn] = TaskSend
+    /\ messageFlowTarget[nn] = n
 
+isEnabled(n) == nodeType[n] \in EventExternalType => IF incoming(n) \in marking /\ ~isConnectedReceiveEvent(n) THEN detect(n, age[incoming(n)], time) ELSE FALSE
 
-isEnabled(n) ==
-  CASE nodeType[n] = GateParallel -> \A f \in Incoming(n) : f \in marking
-    [] nodeType[n] = TaskSend ->
-          /\ \E f \in Incoming(n) : f \in marking
-          /\ n \in DOMAIN messageFlowTarget => \E f \in Incoming(messageFlowTarget[n]) : f \in marking
-    [] nodeType[n] \in EventType -> \E f \in Incoming(n) :
-                                      /\ f \in marking
-                                      /\ detect(n, age[f], time)
-    [] OTHER -> \E f \in Incoming(n) : f \in marking
+ConsumeSets(n) ==
+  CASE nodeType[n] = GateParallel -> { Incoming(n) }
+    [] nodeType[n] = TaskSend /\ n \in DOMAIN messageFlowTarget -> { { incoming(n), incoming(messageFlowTarget[n]) } }
+    [] nodeType[n] \in EventExternalType /\ nodeType[predecessor(n)] = GateDeferred -> { Outgoing(predecessor(n)) }
+    [] OTHER -> { { f } : f \in Incoming(n) }
 
-Consume(n, f) ==
-  CASE nodeType[n] = GateParallel -> Incoming(n)
-    [] nodeType[n] = TaskSend ->
-          IF n \in DOMAIN messageFlowTarget
-          THEN { f } \union Incoming(messageFlowTarget[n])
-          ELSE { f }
-    [] nodeType[n] \in EventType \ { EventNone } ->
-         IF nodeType[source[f]] = GateDeferred
-         THEN Outgoing(source[f])
-         ELSE { f }
-    [] OTHER -> { f }
-
-ProduceVariants(n) ==
+ProduceSets(n) ==
   CASE nodeType[n] = GateExclusive -> { { f } : f \in Outgoing(n) }
     [] nodeType[n] = TaskSend ->
           IF n \in DOMAIN messageFlowTarget
@@ -56,17 +45,21 @@ ProduceVariants(n) ==
 timestep ==
   /\ UNCHANGED <<marking, age>>
   /\ time' = time + 1
-  /\ \A n \in Nodes : ~isEnabled(n) \* \/ nodeType[n] = TaskUser
+  /\ \A n \in Nodes :
+    \/ ~isEnabled(n)
+    \/ \A Consume \in ConsumeSets(n) : Consume \ marking /= {}
 
 executeNode(n) ==
   /\ UNCHANGED time
   /\ isEnabled(n)
-  /\ \E ProduceVariant \in ProduceVariants(n) :
-    /\ \E f \in Incoming(n) :
-      /\ f \in marking
-      /\ marking' = (marking \ Consume(n, f)) \union ProduceVariant
-\*   /\ IF nodeType[n] = TaskUser THEN time' = time + 1 ELSE 
+  /\ \E Consume \in ConsumeSets(n) :
+    /\ Consume \ marking = {}
+    /\ \E Produce \in ProduceSets(n) :
+      /\ \E f \in Incoming(n) :
+        /\ f \in marking
+        /\ marking' = (marking \ Consume) \union Produce
   /\ age' = [ f \in marking' |-> IF f \in marking THEN age[f] ELSE time ]
+\*   /\ IF nodeType[n] = TaskUser THEN time' = time + 1 ELSE 
 
 execute ==
   \E n \in Nodes : executeNode(n)
@@ -78,7 +71,7 @@ Next ==
     \/ timestep
 
 Init ==
-  /\ marking = UNION { Outgoing(n) : n \in { nn \in Nodes : nodeType[nn] = EventNone /\ Incoming(nn) = {} } }
+  /\ marking = UNION { Outgoing(n) : n \in { nn \in Nodes : nodeType[nn] = EventStart } }
   /\ time = 0
   /\ age = [ f \in marking |-> time ]
 

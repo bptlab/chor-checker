@@ -79,7 +79,7 @@ export async function generateTLA(xml: string, property: string): Promise<Object
   let messageFlowTarget: Map<string, string> = new Map();
   let nodeType: Map<string, string> = new Map();
   let isSync: Map<string, string> = new Map();
-  let isBlocking: Map<string, string> = new Map();
+  let detect: Map<string, string> = new Map();
 
   // IDs
   nodes.forEach(node => {
@@ -137,15 +137,21 @@ export async function generateTLA(xml: string, property: string): Promise<Object
     } else if (is('bpmn:EventBasedGateway')(flowNode)) {
       type = 'GateDeferred';
     } else if (is('bpmn:StartEvent')(flowNode)) {
-      type = 'EventNone';
+      type = 'EventStart';
     } else if (is('bpmn:EndEvent')(flowNode)) {
-      type = 'EventNone';
+      type = 'EventEnd';
     } else if (is('bpmn:IntermediateCatchEvent')(flowNode)) {
       const ev : IntermediateCatchEvent = <IntermediateCatchEvent> flowNode;
       if (ev.eventDefinitions.length > 0) {
         const def = ev.eventDefinitions[0];
         if (is('bpmn:TimerEventDefinition')(def)) {
           type = 'EventTimer';
+          const typedDef = <TimerEventDefinition> def;
+          if (typedDef.timeDuration) {
+            detect.set(nodeMap.get(flowNode), 'ta + '+ typedDef.timeDuration.body +' \\leq tc');
+          } else if (typedDef.timeDate) {
+            detect.set(nodeMap.get(flowNode), typedDef.timeDate.body +' \\leq tc');
+          }
         } else if (is('bpmn:ConditionalEventDefinition')(def)) {
           type = 'EventCond';
         } else if (is('bpmn:MessageEventDefinition')(def)) {
@@ -175,6 +181,7 @@ export async function generateTLA(xml: string, property: string): Promise<Object
     target,
     messageFlowTarget,
     nodeType,
-    isSync
+    isSync,
+    detect
   });
 }

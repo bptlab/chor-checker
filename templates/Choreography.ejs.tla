@@ -15,6 +15,16 @@ function outputMap(map) {
   }
 }
 
+function outputDetectMap(map) {
+  if (map.size == 0) {
+    return 'FALSE';
+  } else {
+    return 'CASE ' + Array.from(map.entries())
+     .map(entry => 'n = ' + bracketize(entry[0]) + ' -> ' + entry[1])
+     .join('\n [] ') + '\n [] OTHER -> FALSE';
+  }
+}
+
 %>
 ---------------- MODULE Choreography ----------------
 
@@ -54,6 +64,9 @@ isSync ==
      .map(entry => entry.map((e,i) => i == 0 ? "\"" + e + "\"" : e).join(' :> '))
      .join('\n@@ ')
   %>
+
+detect(n, ta, tc) ==
+   <%- outputDetectMap(detect) %>
 
 CheckProperty == <%- property %>
 
