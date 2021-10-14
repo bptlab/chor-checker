@@ -17,8 +17,9 @@ EventStart == "EventStart"
 EventEnd == "EventEnd"
 EventReceive == "EventReceive"
 EventTimer == "EventTimer"
-EventCond == "EventCond"
-EventExternalType == { EventReceive, EventTimer, EventCond }
+EventConditional == "EventConditional"
+EventImplicitExternalType == { EventTimer, EventConditional }
+EventExternalType == { EventReceive } \union EventImplicitExternalType
 EventType == { EventStart, EventEnd } \union EventExternalType
 
 NodeType == TaskType \union GatewayType \union EventType

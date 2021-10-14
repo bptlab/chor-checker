@@ -168,7 +168,7 @@ export async function generateTLA(xml: string, property: string): Promise<Object
   // events sync/async
   nodes.forEach(flowNode => {
     if (is('bpmn:IntermediateCatchEvent')(flowNode)) {
-      isSync.set(nodeMap.get(flowNode), 'FALSE');
+      isSync.set(nodeMap.get(flowNode), 'TRUE');
     }    
   });
 
